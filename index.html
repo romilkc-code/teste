@@ -1,123 +1,103 @@
-<html>
+<!DOCTYPE html>
+<html lang="pt">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta http-equiv="Content-Style-Type" content="text/css">
-  <title></title>
-  <meta name="Generator" content="Cocoa HTML Writer">
-  <meta name="CocoaVersion" content="2685.4">
-  <style type="text/css">
-    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
-    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Dividendos DEGIRO</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .stats { display: flex; justify-content: center; margin-bottom: 30px; }
+        .stat-card { background: #f8fff9; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #2ecc71; min-width: 250px; }
+        .stat-card h3 { margin: 10px 0 0; color: #2ecc71; font-size: 2.5em; }
+        input[type="file"] { margin: 20px 0; padding: 20px; border: 2px dashed #2ecc71; width: 100%; border-radius: 8px; cursor: pointer; box-sizing: border-box; }
+    </style>
 </head>
 <body>
-<p class="p1">&lt;!DOCTYPE html&gt;</p>
-<p class="p1">&lt;html lang="pt"&gt;</p>
-<p class="p1">&lt;head&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta charset="UTF-8"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;title&gt;Dashboard de Dividendos DEGIRO&lt;/title&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"&gt;&lt;/script&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://cdn.jsdelivr.net/npm/chart.js"&gt;&lt;/script&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;style&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>body { font-family: sans-serif; background: #f4f7f6; padding: 20px; color: #333; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.stats { display: flex; justify-content: space-around; margin-bottom: 30px; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.stat-card { background: #eef9f2; padding: 20px; border-radius: 8px; text-align: center; min-width: 200px; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.stat-card h3 { margin: 0; color: #2ecc71; font-size: 2em; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>input[type="file"] { margin: 20px 0; padding: 10px; border: 1px dashed #ccc; width: 100%; cursor: pointer; }</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/style&gt;</p>
-<p class="p1">&lt;/head&gt;</p>
-<p class="p1">&lt;body&gt;</p>
-<p class="p2"><br></p>
-<p class="p1">&lt;div class="container"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="header"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;h1&gt;💰 Dividendos DEGIRO&lt;/h1&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;p&gt;Carregue o seu ficheiro Transactions.csv para analisar&lt;/p&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;input type="file" id="csvFile" accept=".csv"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="stats"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="stat-card"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;p&gt;Total Recebido (Líquido)&lt;/p&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;h3 id="totalValue"&gt;0.00€&lt;/h3&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;canvas id="dividendChart" width="400" height="200"&gt;&lt;/canvas&gt;</p>
-<p class="p1">&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1">&lt;script&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>document.getElementById('csvFile').addEventListener('change', function(e) {</p>
-<p class="p1"><span class="Apple-converted-space">        </span>const file = e.target.files[0];</p>
-<p class="p1"><span class="Apple-converted-space">        </span>if (!file) return;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>Papa.parse(file, {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>header: true,</p>
-<p class="p1"><span class="Apple-converted-space">            </span>skipEmptyLines: true,</p>
-<p class="p1"><span class="Apple-converted-space">            </span>complete: function(results) {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>processData(results.data);</p>
-<p class="p1"><span class="Apple-converted-space">            </span>}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>});</p>
-<p class="p1"><span class="Apple-converted-space">    </span>});</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>function processData(data) {</p>
-<p class="p1"><span class="Apple-converted-space">        </span>const monthlyData = {};</p>
-<p class="p1"><span class="Apple-converted-space">        </span>let totalGlobal = 0;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>data.forEach(row =&gt; {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>// A DEGIRO identifica dividendos no campo 'Produto' ou se houver retenção na fonte.</p>
-<p class="p1"><span class="Apple-converted-space">            </span>// Nota: Dependendo da versão do CSV, o filtro pode ser por "Dividendo" ou "Dividendos"</p>
-<p class="p1"><span class="Apple-converted-space">            </span>// Aqui vamos filtrar se o valor total for positivo e não for uma venda (simplificação)</p>
-<p class="p1"><span class="Apple-converted-space">            </span>// Ou melhor: procurar por termos específicos na descrição se disponível.</p>
-<p class="p2"><span class="Apple-converted-space">            </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>const valorTotal = parseFloat(row['Total EUR']?.replace(',', '.') || 0);</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const dataBruta = row['Data']; // Formato DD-MM-YYYY</p>
-<p class="p2"><span class="Apple-converted-space">            </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>// Lógica: Dividendos na DEGIRO costumam ser entradas de dinheiro (positivas)<span class="Apple-converted-space"> </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>// que não são depósitos. Vamos filtrar por valores positivos no "Total EUR".</p>
-<p class="p1"><span class="Apple-converted-space">            </span>if (valorTotal &gt; 0 &amp;&amp; dataBruta) {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>const partes = dataBruta.split('-');</p>
-<p class="p1"><span class="Apple-converted-space">                </span>const mesAno = partes[1] + '/' + partes[2]; // Formato MM/YYYY</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                </span>monthlyData[mesAno] = (monthlyData[mesAno] || 0) + valorTotal;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>totalGlobal += valorTotal;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>});</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>updateDashboard(totalGlobal, monthlyData);</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>let myChart;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>function updateDashboard(total, monthlyData) {</p>
-<p class="p1"><span class="Apple-converted-space">        </span>document.getElementById('totalValue').innerText = total.toFixed(2) + '€';</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>const ctx = document.getElementById('dividendChart').getContext('2d');</p>
-<p class="p1"><span class="Apple-converted-space">        </span>const labels = Object.keys(monthlyData).reverse();</p>
-<p class="p1"><span class="Apple-converted-space">        </span>const values = Object.values(monthlyData).reverse();</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>if (myChart) myChart.destroy();</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>myChart = new Chart(ctx, {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>type: 'bar',</p>
-<p class="p1"><span class="Apple-converted-space">            </span>data: {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>labels: labels,</p>
-<p class="p1"><span class="Apple-converted-space">                </span>datasets: [{</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>label: 'Dividendos Mensais (€)',</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>data: values,</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>backgroundColor: '#2ecc71',</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>borderRadius: 5</p>
-<p class="p1"><span class="Apple-converted-space">                </span>}]</p>
-<p class="p1"><span class="Apple-converted-space">            </span>},</p>
-<p class="p1"><span class="Apple-converted-space">            </span>options: {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>scales: { y: { beginAtZero: true } }</p>
-<p class="p1"><span class="Apple-converted-space">            </span>}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>});</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1">&lt;/script&gt;</p>
-<p class="p2"><br></p>
-<p class="p1">&lt;/body&gt;</p>
-<p class="p1">&lt;/html&gt;</p>
+
+<div class="container">
+    <div class="header">
+        <h1>💰 Dashboard de Dividendos</h1>
+        <p>Carregue o ficheiro <strong>Account.csv</strong> (ou Transactions) da DEGIRO</p>
+        <input type="file" id="csvFile" accept=".csv">
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <p>Total Recebido (Líquido)</p>
+            <h3 id="totalValue">0.00€</h3>
+        </div>
+    </div>
+
+    <canvas id="dividendChart"></canvas>
+</div>
+
+<script>
+    let myChart;
+
+    document.getElementById('csvFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                processData(results.data);
+            }
+        });
+    });
+
+    function processData(data) {
+        const monthlyData = {};
+        let totalGlobal = 0;
+
+        data.forEach(row => {
+            const desc = (row['Descrição'] || row['Description'] || "").toLowerCase();
+            const dataBruta = row['Data'] || row['Date'];
+            const valorStr = row['Valor'] || row['Total'] || row['Total EUR'] || "0";
+            
+            // Tratamento de números formato Europeu (1.234,56)
+            const valorTotal = parseFloat(valorStr.toString().replace(/\./g, '').replace(',', '.'));
+
+            if (desc.includes('dividendo') && !isNaN(valorTotal) && valorTotal > 0) {
+                const partes = dataBruta.split('-');
+                if (partes.length === 3) {
+                    const mesAno = partes[1] + '/' + partes[2];
+                    monthlyData[mesAno] = (monthlyData[mesAno] || 0) + valorTotal;
+                    totalGlobal += valorTotal;
+                }
+            }
+        });
+
+        const sortedKeys = Object.keys(monthlyData).sort((a, b) => {
+            const [m1, y1] = a.split('/').map(Number);
+            const [m2, y2] = b.split('/').map(Number);
+            return new Date(y1, m1 - 1) - new Date(y2, m2 - 1);
+        });
+
+        updateDashboard(totalGlobal, sortedKeys, sortedKeys.map(k => monthlyData[k]));
+    }
+
+    function updateDashboard(total, labels, values) {
+        document.getElementById('totalValue').innerText = total.toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' });
+        const ctx = document.getElementById('dividendChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Dividendos Mensais (€)',
+                    data: values,
+                    backgroundColor: '#2ecc71'
+                }]
+            }
+        });
+    }
+</script>
 </body>
 </html>
