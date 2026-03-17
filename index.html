@@ -9,43 +9,19 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 1100px; margin: auto; }
-        
-        /* Header com os dois campos de Upload */
-        .top-bar { 
-            display: flex; 
-            justify-content: space-between; 
-            background: white; 
-            padding: 20px; 
-            border-radius: 12px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
+        .top-bar { display: flex; justify-content: space-between; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; flex-wrap: wrap; gap: 20px; }
         .upload-box { flex: 1; min-width: 250px; }
         .upload-box label { display: block; font-weight: bold; font-size: 0.85em; margin-bottom: 5px; color: #2ecc71; }
-        input[type="file"] { font-size: 0.8em; width: 100%; }
-
-        /* Estilo dos Cards de Gráficos */
         .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         @media (max-width: 800px) { .dashboard-grid { grid-template-columns: 1fr; } }
-
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); position: relative; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); position: relative; min-height: 450px; }
         .card h2 { margin-top: 0; font-size: 1.2em; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
-        
-        /* Filtros dos Dividendos */
         .filters { display: flex; gap: 10px; margin-bottom: 15px; }
         select { padding: 5px; border-radius: 4px; border: 1px solid #ddd; font-size: 0.8em; flex: 1; }
-
-        /* Gráfico Donut Center Text */
-        .donut-container { position: relative; height: 300px; }
-        .center-text { 
-            position: absolute; top: 55%; left: 50%; 
-            transform: translate(-50%, -50%); text-align: center; pointer-events: none; 
-        }
-        .center-text span { display: block; font-size: 0.7em; color: #666; }
-        .center-text strong { font-size: 1.2em; color: #333; }
-
+        .donut-container { position: relative; height: 350px; width: 100%; }
+        .center-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; width: 100%; }
+        .center-text span { display: block; font-size: 0.75em; color: #666; font-weight: bold; }
+        .center-text strong { font-size: 1.4em; color: #333; }
         .total-display { font-size: 1.8em; font-weight: bold; color: #2ecc71; margin-bottom: 10px; }
     </style>
 </head>
@@ -91,7 +67,7 @@
     let chartDiv, chartPort;
     let rawDivData = [];
 
-    // --- LÓGICA DIVIDENDOS ---
+    // --- LÓGICA DIVIDENDOS (ACCOUNT.CSV) ---
     document.getElementById('fileDividendos').addEventListener('change', function(e) {
         Papa.parse(e.target.files[0], {
             header: true, skipEmptyLines: true,
@@ -108,11 +84,10 @@
     document.getElementById('yearFilter').addEventListener('change', processDivs);
 
     function setupDivFilters(data) {
-        const pSel = document.getElementById('prodFilter');
-        const ySel = document.getElementById('yearFilter');
+        const pSel = document.getElementById('prodFilter'), ySel = document.getElementById('yearFilter');
         const prods = new Set(), years = new Set();
         data.forEach(r => {
-            if((r['Descrição']||"").toLowerCase() === "dividendo") {
+            if((r['Descrição']||"").toLowerCase().includes("dividendo")) {
                 if(r['Produto']) prods.add(r['Produto']);
                 if(r['Data']) years.add(r['Data'].split('-')[2]);
             }
@@ -130,7 +105,9 @@
             if((r['Descrição']||"").toLowerCase() === "dividendo") {
                 const data = r['Data'] || "", ano = data.split('-')[2], mesAno = data.split('-')[1]+'/'+ano;
                 if((fProd==='all'||r['Produto']===fProd) && (fYear==='all'||ano===fYear)) {
-                    const val = parseFloat(Object.values(r).find(v=>v&&v.includes(',')&&!isNaN(parseFloat(v.replace(',','.'))))?.replace(',','.') || 0);
+                    const rowValues = Object.values(r);
+                    const valStr = rowValues.find(v => v && v.includes(',') && !isNaN(parseFloat(v.replace('.','').replace(',','.')))) || "0";
+                    const val = parseFloat(valStr.replace(/\./g,'').replace(',','.'));
                     monthly[mesAno] = (monthly[mesAno] || 0) + val;
                     total += val;
                 }
@@ -144,7 +121,7 @@
         });
     }
 
-    // --- LÓGICA CARTEIRA ---
+    // --- LÓGICA CARTEIRA (PORTFOLIO.CSV) ---
     document.getElementById('filePortfolio').addEventListener('change', function(e) {
         Papa.parse(e.target.files[0], {
             header: true, skipEmptyLines: true,
@@ -158,20 +135,50 @@
     function processPortfolio(data) {
         let total = 0; const ativos = {};
         data.forEach(r => {
-            const prod = r['Produto'] || r['Product'];
-            const valStr = r['Valor'] || r['Value'] || r['Valor EUR'] || "0";
-            const val = parseFloat(valStr.toString().replace(/\./g,'').replace(',','.'));
-            if(prod && val > 0) { ativos[prod] = (ativos[prod]||0) + val; total += val; }
+            const prod = r['Produto'];
+            // Ignorar linhas de CASH/DINHEIRO
+            if (prod && !prod.includes("CASH") && !prod.includes("CURRENCY")) {
+                // Ir buscar a última coluna que é o Valor em EUR
+                const colunas = Object.keys(r);
+                const ultimaColuna = colunas[colunas.length - 1];
+                const valStr = r[ultimaColuna] || "0";
+                
+                // Limpar pontos de milhar e trocar vírgula por ponto
+                const val = parseFloat(valStr.replace(/\./g,'').replace(',','.'));
+                
+                if(!isNaN(val) && val > 0) {
+                    ativos[prod] = (ativos[prod]||0) + val;
+                    total += val;
+                }
+            }
         });
+
         document.getElementById('totalPortValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+        const labels = Object.keys(ativos);
+        const valores = Object.values(ativos);
+
         if(chartPort) chartPort.destroy();
         chartPort = new Chart(document.getElementById('chartPort'), {
             type: 'doughnut',
             data: {
-                labels: Object.keys(ativos),
-                datasets: [{ data: Object.values(ativos), backgroundColor: ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c'] }]
+                labels: labels,
+                datasets: [{ 
+                    data: valores, 
+                    backgroundColor: ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c','#16a085','#27ae60','#2980b9','#8e44ad'] 
+                }]
             },
-            options: { cutout:'75%', plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: (c) => ` ${c.label}: ${c.raw.toFixed(2)}€ (${((c.raw/total)*100).toFixed(1)}%)` } } } }
+            options: { 
+                maintainAspectRatio: false,
+                cutout:'75%', 
+                plugins:{ 
+                    legend:{ display: false }, 
+                    tooltip:{ 
+                        callbacks:{ 
+                            label: (c) => ` ${c.label}: ${c.raw.toLocaleString('pt-PT',{style:'currency',currency:'EUR'})} (${((c.raw/total)*100).toFixed(1)}%)` 
+                        } 
+                    } 
+                } 
+            }
         });
     }
 </script>
