@@ -56,42 +56,41 @@ function processData(data) {
     let totalGlobal = 0;
 
     data.forEach((row) => {
-        // Transformar toda a linha em texto para procurar a palavra "Dividendo" facilmente
-        const linhaCompleta = Object.values(row).join(" ").toLowerCase();
+        // 1. Identificar se é Dividendo (ignora o "Imposto sobre dividendo")
+        const descricao = (row['Descrição'] || "").toLowerCase();
+        const isDividendo = descricao === "dividendo"; 
         
-        // Verificar se a linha contém termos de dividendos
-        if (linhaCompleta.includes('dividendo') || linhaCompleta.includes('dividend')) {
-            
-            // 1. Encontrar a Data (procura em colunas comuns)
-            const dataBruta = row['Data'] || row['Date'] || row['Data de execução'] || Object.values(row)[0];
-            
-            // 2. Encontrar o Valor (procura por colunas que costumam ter os números)
-            const valorBruto = row['Valor'] || row['Montante'] || row['Total'] || row['Amount'] || row['Total EUR'];
-            
-            if (valorBruto && dataBruta) {
-                // Limpar o valor: remove símbolos de moeda, pontos de milhar e ajusta a vírgula
-                const valorLimpo = valorBruto.toString()
-                    .replace(/[^\d,.-]/g, '') // Remove tudo o que não é número, ponto, vírgula ou sinal de menos
-                    .replace(/\./g, '')       // Remove pontos de milhar
-                    .replace(',', '.');       // Troca vírgula decimal por ponto
-                
-                const valorTotal = Math.abs(parseFloat(valorLimpo)); // Usamos o valor absoluto
+        // 2. Capturar o valor
+        // No teu CSV, o valor aparece numa coluna sem nome após 'Mudança'
+        // Vamos procurar dinamicamente o campo que contém o valor numérico
+        let valorBruto = row['Mudança'] || "0";
+        
+        // Se a coluna 'Mudança' estiver vazia ou for a moeda (USD/EUR), 
+        // o PapaParse coloca o número na coluna seguinte.
+        // Vamos percorrer os valores da linha para achar o número do dividendo.
+        const valoresLinha = Object.values(row);
+        const valorNumerico = valoresLinha.find(v => v && v.includes(',') && !isNaN(parseFloat(v.replace(',','.'))));
 
-                if (!isNaN(valorTotal) && valorTotal > 0) {
-                    // Extrair MM/YYYY
-                    const partes = dataBruta.split(/[-/]/);
-                    if (partes.length >= 3) {
-                        // Tenta detetar se o ano está no início ou no fim
-                        const mesAno = partes[0].length === 4 ? partes[1] + '/' + partes[0] : partes[1] + '/' + partes[2];
-                        
-                        monthlyData[mesAno] = (monthlyData[mesAno] || 0) + valorTotal;
-                        totalGlobal += valorTotal;
-                    }
+        if (isDividendo && valorNumerico) {
+            // Limpeza do valor (ex: "1,26" -> 1.26)
+            const valorTotal = parseFloat(valorNumerico.replace(',', '.'));
+            
+            // 3. Data (Formato DD-MM-YYYY)
+            const dataBruta = row['Data'];
+            
+            if (!isNaN(valorTotal) && dataBruta) {
+                const partes = dataBruta.split('-');
+                if (partes.length === 3) {
+                    const mesAno = partes[1] + '/' + partes[2]; // MM/YYYY
+                    
+                    monthlyData[mesAno] = (monthlyData[mesAno] || 0) + valorTotal;
+                    totalGlobal += valorTotal;
                 }
             }
         }
     });
 
+    // Ordenação Cronológica
     const sortedKeys = Object.keys(monthlyData).sort((a, b) => {
         const [m1, y1] = a.split('/').map(Number);
         const [m2, y2] = b.split('/').map(Number);
@@ -99,12 +98,11 @@ function processData(data) {
     });
 
     if (totalGlobal === 0) {
-        alert("Ainda não encontrámos dividendos. Certifique-se que o ficheiro CSV contém a palavra 'Dividendo' ou 'Dividend'.");
+        alert("Não foram encontrados dividendos. Verifique se o ficheiro está correto.");
     }
 
     updateDashboard(totalGlobal, sortedKeys, sortedKeys.map(k => monthlyData[k].toFixed(2)));
 }
-
     function updateDashboard(total, labels, values) {
         document.getElementById('totalValue').innerText = total.toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' });
         const ctx = document.getElementById('dividendChart').getContext('2d');
