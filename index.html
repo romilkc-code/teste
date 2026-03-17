@@ -55,41 +55,40 @@ function processData(data) {
     const monthlyData = {};
     let totalGlobal = 0;
 
-    console.log("Linhas detetadas:", data.length);
-    console.log("Colunas disponíveis:", Object.keys(data[0]));
-
-    data.forEach((row, index) => {
-        // 1. Tenta encontrar a descrição em várias colunas possíveis
-        const desc = (row['Descrição'] || row['Description'] || row['Produto'] || row['Product'] || "").toLowerCase();
+    data.forEach((row) => {
+        // Transformar toda a linha em texto para procurar a palavra "Dividendo" facilmente
+        const linhaCompleta = Object.values(row).join(" ").toLowerCase();
         
-        // 2. Tenta encontrar a data
-        const dataBruta = row['Data'] || row['Date'] || row['Data de execução'] || "";
-        
-        // 3. Tenta encontrar o valor (pode estar em 'Valor', 'Total', 'Total EUR', 'Montante')
-        const valorStr = row['Valor'] || row['Total'] || row['Total EUR'] || row['Montante'] || row['Amount'] || "0";
-        
-        // Limpeza agressiva do número: remove espaços, pontos de milhares e troca vírgula por ponto
-        const valorLimpo = valorStr.toString().replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
-        const valorTotal = parseFloat(valorLimpo);
-
-        // Filtro: Tem de ser "Dividendo" E ser um número positivo
-        if (desc.includes('Dividendo') && !isNaN(valorTotal) && valorTotal > 0) {
-            // Extrair Mes/Ano (suporta formatos DD-MM-YYYY ou YYYY-MM-DD)
-            let mesAno = "Outros";
-            const partes = dataBruta.includes('-') ? dataBruta.split('-') : dataBruta.split('/');
+        // Verificar se a linha contém termos de dividendos
+        if (linhaCompleta.includes('dividendo') || linhaCompleta.includes('dividend')) {
             
-            if (partes.length >= 3) {
-                // Se o ano for o primeiro (YYYY-MM-DD)
-                if (partes[0].length === 4) {
-                    mesAno = partes[1] + '/' + partes[0];
-                } else {
-                    // Se o ano for o último (DD-MM-YYYY)
-                    mesAno = partes[1] + '/' + partes[2];
+            // 1. Encontrar a Data (procura em colunas comuns)
+            const dataBruta = row['Data'] || row['Date'] || row['Data de execução'] || Object.values(row)[0];
+            
+            // 2. Encontrar o Valor (procura por colunas que costumam ter os números)
+            const valorBruto = row['Valor'] || row['Montante'] || row['Total'] || row['Amount'] || row['Total EUR'];
+            
+            if (valorBruto && dataBruta) {
+                // Limpar o valor: remove símbolos de moeda, pontos de milhar e ajusta a vírgula
+                const valorLimpo = valorBruto.toString()
+                    .replace(/[^\d,.-]/g, '') // Remove tudo o que não é número, ponto, vírgula ou sinal de menos
+                    .replace(/\./g, '')       // Remove pontos de milhar
+                    .replace(',', '.');       // Troca vírgula decimal por ponto
+                
+                const valorTotal = Math.abs(parseFloat(valorLimpo)); // Usamos o valor absoluto
+
+                if (!isNaN(valorTotal) && valorTotal > 0) {
+                    // Extrair MM/YYYY
+                    const partes = dataBruta.split(/[-/]/);
+                    if (partes.length >= 3) {
+                        // Tenta detetar se o ano está no início ou no fim
+                        const mesAno = partes[0].length === 4 ? partes[1] + '/' + partes[0] : partes[1] + '/' + partes[2];
+                        
+                        monthlyData[mesAno] = (monthlyData[mesAno] || 0) + valorTotal;
+                        totalGlobal += valorTotal;
+                    }
                 }
             }
-
-            monthlyData[mesAno] = (monthlyData[mesAno] || 0) + valorTotal;
-            totalGlobal += valorTotal;
         }
     });
 
@@ -100,10 +99,10 @@ function processData(data) {
     });
 
     if (totalGlobal === 0) {
-        alert("Ficheiro lido, mas não foram encontrados dividendos. Verifique se exportou o ficheiro 'Conta' ou 'Transações'.");
+        alert("Ainda não encontrámos dividendos. Certifique-se que o ficheiro CSV contém a palavra 'Dividendo' ou 'Dividend'.");
     }
 
-    updateDashboard(totalGlobal, sortedKeys, sortedKeys.map(k => monthlyData[k]));
+    updateDashboard(totalGlobal, sortedKeys, sortedKeys.map(k => monthlyData[k].toFixed(2)));
 }
 
     function updateDashboard(total, labels, values) {
