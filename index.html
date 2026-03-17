@@ -73,7 +73,7 @@ function processData(data) {
         const valorTotal = parseFloat(valorLimpo);
 
         // Filtro: Tem de ser "Dividendo" E ser um número positivo
-        if (desc.includes('dividendo') && !isNaN(valorTotal) && valorTotal > 0) {
+        if (desc.includes('Dividendo') && !isNaN(valorTotal) && valorTotal > 0) {
             // Extrair Mes/Ano (suporta formatos DD-MM-YYYY ou YYYY-MM-DD)
             let mesAno = "Outros";
             const partes = dataBruta.includes('-') ? dataBruta.split('-') : dataBruta.split('/');
