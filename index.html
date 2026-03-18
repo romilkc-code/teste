@@ -7,34 +7,102 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        /* Variáveis de Cores para os dois modos */
+        :root {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --header-bg: #ffffff;
+            --border-color: #eeeeee;
+            --input-bg: #ffffff;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --header-bg: #1e1e1e;
+            --border-color: #333333;
+            --input-bg: #2d2d2d;
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg-color); margin: 0; padding: 20px; color: var(--text-color); transition: all 0.3s ease; }
         .container { max-width: 1100px; margin: auto; }
-        .top-bar { display: flex; justify-content: space-between; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; flex-wrap: wrap; gap: 20px; }
+        
+        /* Header com os dois campos de Upload e o Switch de Tema */
+        .top-bar { 
+            display: flex; 
+            justify-content: space-between; 
+            background: var(--header-bg); 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            margin-bottom: 20px; 
+            flex-wrap: wrap; 
+            gap: 20px; 
+            border: 1px solid var(--border-color); 
+            align-items: flex-end;
+        }
+
         .upload-box { flex: 1; min-width: 250px; }
-        .upload-box label { display: block; font-weight: bold; font-size: 0.85em; margin-bottom: 5px; color: #2ecc71; }
+        .upload-box label { display: block; font-weight: bold; font-size: 0.85em; margin-bottom: 8px; color: #2ecc71; }
+        
+        .theme-switch-wrapper { display: flex; align-items: center; }
+        .theme-btn { 
+            background: var(--input-bg); 
+            border: 1px solid var(--border-color); 
+            color: var(--text-color); 
+            padding: 8px 15px; 
+            border-radius: 20px; 
+            cursor: pointer; 
+            font-size: 0.8em; 
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .theme-btn:hover { opacity: 0.8; }
+
+        /* Grelha de Gráficos */
         .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        @media (max-width: 800px) { .dashboard-grid { grid-template-columns: 1fr; } }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); position: relative; min-height: 450px; }
-        .card h2 { margin-top: 0; font-size: 1.2em; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        @media (max-width: 900px) { .dashboard-grid { grid-template-columns: 1fr; } }
+        
+        .card { 
+            background: var(--card-bg); 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            border: 1px solid var(--border-color); 
+            min-height: 480px; 
+        }
+        .card h2 { margin-top: 0; font-size: 1.1em; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        
         .filters { display: flex; gap: 10px; margin-bottom: 15px; }
-        select { padding: 5px; border-radius: 4px; border: 1px solid #ddd; font-size: 0.8em; flex: 1; }
+        select { padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color); font-size: 0.8em; flex: 1; outline: none; }
+        
+        /* Estilo do Centro do Donut */
         .donut-container { position: relative; height: 350px; width: 100%; }
         .center-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; width: 100%; }
-        .center-text span { display: block; font-size: 0.75em; color: #666; font-weight: bold; }
-        .center-text strong { font-size: 1.4em; color: #333; }
-        .total-display { font-size: 1.8em; font-weight: bold; color: #2ecc71; margin-bottom: 10px; }
+        .center-text span { display: block; font-size: 0.75em; color: #888; font-weight: bold; }
+        .center-text strong { font-size: 1.5em; color: var(--text-color); }
+        
+        .total-display { font-size: 2em; font-weight: bold; color: #2ecc71; margin-bottom: 15px; }
+        input[type="file"] { color: var(--text-color); font-size: 0.8em; }
     </style>
 </head>
-<body>
+<body data-theme="light">
 
 <div class="container">
     <div class="top-bar">
         <div class="upload-box">
-            <label>1. Dividendos (Account.csv)</label>
+            <label>📂 DIVIDENDOS (Account.csv)</label>
             <input type="file" id="fileDividendos" accept=".csv">
         </div>
+
+        <div class="theme-switch-wrapper">
+            <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙 Dark Mode</button>
+        </div>
+
         <div class="upload-box" style="text-align: right;">
-            <label>2. Carteira (Portfolio.csv)</label>
+            <label>📂 CARTEIRA (Portfolio.csv)</label>
             <input type="file" id="filePortfolio" accept=".csv">
         </div>
     </div>
@@ -66,18 +134,43 @@
 <script>
     let chartDiv, chartPort;
     let rawDivData = [];
+    let portAtivos = {}, portTotal = 0;
+
+    // --- LÓGICA DE TEMA (DARK/LIGHT) ---
+    function toggleTheme() {
+        const body = document.body;
+        const currentTheme = body.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        body.setAttribute('data-theme', newTheme);
+        document.getElementById('themeBtn').innerText = newTheme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+        localStorage.setItem('theme', newTheme);
+        
+        // Recriar gráficos para atualizar cores de eixos e textos
+        if (rawDivData.length > 0) processDivs();
+        if (Object.keys(portAtivos).length > 0) updatePortChart();
+    }
+
+    window.onload = () => {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.body.setAttribute('data-theme', savedTheme);
+        document.getElementById('themeBtn').innerText = savedTheme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+    };
+
+    function getThemeColors() {
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        return {
+            text: isDark ? '#e0e0e0' : '#666',
+            grid: isDark ? '#333' : '#eee',
+            border: isDark ? '#1e1e1e' : '#fff'
+        };
+    }
 
     // --- LÓGICA DIVIDENDOS (ACCOUNT.CSV) ---
-    document.getElementById('fileDividendos').addEventListener('change', function(e) {
-        Papa.parse(e.target.files[0], {
-            header: true, skipEmptyLines: true,
-            complete: function(results) {
-                rawDivData = results.data;
-                setupDivFilters(results.data);
-                processDivs();
-                document.getElementById('cardDiv').style.display = 'block';
-            }
-        });
+    document.getElementById('fileDividendos').addEventListener('change', (e) => {
+        Papa.parse(e.target.files[0], { header: true, skipEmptyLines: true, complete: r => {
+            rawDivData = r.data; setupDivFilters(r.data); processDivs();
+            document.getElementById('cardDiv').style.display = 'block';
+        }});
     });
 
     document.getElementById('prodFilter').addEventListener('change', processDivs);
@@ -101,6 +194,8 @@
     function processDivs() {
         const monthly = {}, fProd = document.getElementById('prodFilter').value, fYear = document.getElementById('yearFilter').value;
         let total = 0;
+        const colors = getThemeColors();
+
         rawDivData.forEach(r => {
             if((r['Descrição']||"").toLowerCase() === "dividendo") {
                 const data = r['Data'] || "", ano = data.split('-')[2], mesAno = data.split('-')[1]+'/'+ano;
@@ -113,68 +208,65 @@
                 }
             }
         });
+
         const labels = Object.keys(monthly).sort((a,b) => new Date(a.split('/')[1], a.split('/')[0]-1) - new Date(b.split('/')[1], b.split('/')[0]-1));
         document.getElementById('totalDivValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+        
         if(chartDiv) chartDiv.destroy();
         chartDiv = new Chart(document.getElementById('chartDiv'), {
-            type:'bar', data: { labels, datasets:[{label:'€', data: labels.map(l=>monthly[l].toFixed(2)), backgroundColor:'#2ecc71'}] }
+            type:'bar', 
+            data: { labels, datasets:[{label:'Dividendos €', data: labels.map(l=>monthly[l].toFixed(2)), backgroundColor:'#2ecc71', borderRadius: 4}] },
+            options: { 
+                scales: { 
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    x: { ticks: { color: colors.text }, grid: { display: false } }
+                }, 
+                plugins: { legend: { display: false } } 
+            }
         });
     }
 
     // --- LÓGICA CARTEIRA (PORTFOLIO.CSV) ---
-    document.getElementById('filePortfolio').addEventListener('change', function(e) {
-        Papa.parse(e.target.files[0], {
-            header: true, skipEmptyLines: true,
-            complete: function(results) {
-                processPortfolio(results.data);
-                document.getElementById('cardPort').style.display = 'block';
-            }
-        });
+    document.getElementById('filePortfolio').addEventListener('change', (e) => {
+        Papa.parse(e.target.files[0], { header: true, skipEmptyLines: true, complete: r => {
+            portAtivos = {}; portTotal = 0;
+            r.data.forEach(row => {
+                const prod = row['Produto'];
+                if (prod && !prod.includes("CASH") && !prod.includes("CURRENCY")) {
+                    const cols = Object.keys(row);
+                    const val = parseFloat((row[cols[cols.length-1]]||"0").replace(/\./g,'').replace(',','.'));
+                    if(!isNaN(val) && val > 0) { portAtivos[prod] = (portAtivos[prod]||0) + val; portTotal += val; }
+                }
+            });
+            updatePortChart();
+            document.getElementById('cardPort').style.display = 'block';
+        }});
     });
 
-    function processPortfolio(data) {
-        let total = 0; const ativos = {};
-        data.forEach(r => {
-            const prod = r['Produto'];
-            // Ignorar linhas de CASH/DINHEIRO
-            if (prod && !prod.includes("CASH") && !prod.includes("CURRENCY")) {
-                // Ir buscar a última coluna que é o Valor em EUR
-                const colunas = Object.keys(r);
-                const ultimaColuna = colunas[colunas.length - 1];
-                const valStr = r[ultimaColuna] || "0";
-                
-                // Limpar pontos de milhar e trocar vírgula por ponto
-                const val = parseFloat(valStr.replace(/\./g,'').replace(',','.'));
-                
-                if(!isNaN(val) && val > 0) {
-                    ativos[prod] = (ativos[prod]||0) + val;
-                    total += val;
-                }
-            }
-        });
-
-        document.getElementById('totalPortValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
-        const labels = Object.keys(ativos);
-        const valores = Object.values(ativos);
-
+    function updatePortChart() {
+        document.getElementById('totalPortValue').innerText = portTotal.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+        const colors = getThemeColors();
+        
         if(chartPort) chartPort.destroy();
         chartPort = new Chart(document.getElementById('chartPort'), {
             type: 'doughnut',
-            data: {
-                labels: labels,
+            data: { 
+                labels: Object.keys(portAtivos), 
                 datasets: [{ 
-                    data: valores, 
-                    backgroundColor: ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c','#16a085','#27ae60','#2980b9','#8e44ad'] 
-                }]
+                    data: Object.values(portAtivos), 
+                    backgroundColor: ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c','#16a085','#27ae60','#2980b9','#8e44ad'], 
+                    borderColor: colors.border,
+                    borderWidth: 2
+                }] 
             },
             options: { 
-                maintainAspectRatio: false,
+                maintainAspectRatio: false, 
                 cutout:'75%', 
                 plugins:{ 
                     legend:{ display: false }, 
                     tooltip:{ 
                         callbacks:{ 
-                            label: (c) => ` ${c.label}: ${c.raw.toLocaleString('pt-PT',{style:'currency',currency:'EUR'})} (${((c.raw/total)*100).toFixed(1)}%)` 
+                            label: (c) => ` ${c.label}: ${c.raw.toLocaleString('pt-PT',{style:'currency',currency:'EUR'})} (${((c.raw/portTotal)*100).toFixed(1)}%)` 
                         } 
                     } 
                 } 
