@@ -7,131 +7,200 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --bg-color: #f0f2f5; --card-bg: #ffffff; --text-color: #333; --header-bg: #fff; --border: #eee; }
-        [data-theme="dark"] { --bg-color: #121212; --card-bg: #1e1e1e; --text-color: #e0e0e0; --header-bg: #1e1e1e; --border: #333; }
+        :root { --bg-color: #f0f2f5; --card-bg: #ffffff; --text-color: #333; --header-bg: #fff; --border: #eee; --input: #fff; }
+        [data-theme="dark"] { --bg-color: #121212; --card-bg: #1e1e1e; --text-color: #e0e0e0; --header-bg: #1e1e1e; --border: #333; --input: #2d2d2d; }
         
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg-color); margin: 0; padding: 20px; color: var(--text-color); transition: 0.3s; }
         .container { max-width: 1200px; margin: auto; }
-        .top-bar { display: flex; justify-content: space-between; background: var(--header-bg); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border); align-items: center; }
-        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        
+        .top-bar { display: flex; justify-content: space-between; background: var(--header-bg); padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; align-items: center; border: 1px solid var(--border); }
+        .upload-box label { display: block; font-weight: bold; font-size: 0.75em; color: #2ecc71; margin-bottom: 5px; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         @media (max-width: 900px) { .dashboard-grid { grid-template-columns: 1fr; } }
         
-        .card { background: var(--card-bg); padding: 25px; border-radius: 12px; border: 1px solid var(--border); }
-        .allocation-menu { display: flex; justify-content: center; gap: 5px; margin-bottom: 20px; }
-        .alloc-btn { background: none; border: 1px solid var(--border); color: var(--text-color); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75em; }
+        .card { background: var(--card-bg); padding: 25px; border-radius: 12px; border: 1px solid var(--border); min-height: 550px; }
+        
+        .allocation-menu { display: flex; justify-content: center; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; }
+        .alloc-btn { background: var(--input); border: 1px solid var(--border); color: var(--text-color); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75em; font-weight: bold; }
         .alloc-btn.active { background: #2ecc71; color: white; border-color: #2ecc71; }
+
+        .donut-container { position: relative; height: 350px; width: 100%; }
+        .center-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
+        .center-text strong { font-size: 1.4em; color: var(--text-color); display: block; }
         
-        /* Estilo da Tabela de Preços Atuais */
-        .market-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
-        .market-table th { text-align: left; padding: 12px; border-bottom: 2px solid var(--border); color: #2ecc71; }
-        .market-table td { padding: 12px; border-bottom: 1px solid var(--border); }
-        .up { color: #2ecc71; font-weight: bold; }
-        .down { color: #e74c3c; font-weight: bold; }
-        
-        .theme-btn { cursor: pointer; padding: 8px 15px; border-radius: 20px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text-color); }
+        .total-display { font-size: 1.8em; font-weight: bold; color: #2ecc71; margin-bottom: 10px; }
+        .theme-btn { background: var(--input); border: 1px solid var(--border); color: var(--text-color); padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 0.8em; }
     </style>
 </head>
 <body data-theme="light">
 
 <div class="container">
     <div class="top-bar">
-        <div><label style="font-size:0.7em; font-weight:bold; color:#2ecc71">ACCOUNT.CSV</label><br><input type="file" id="fileDiv"></div>
+        <div class="upload-box"><label>1. ACCOUNT.CSV</label><input type="file" id="fileDiv" accept=".csv"></div>
         <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙 Dark Mode</button>
-        <div style="text-align: right;"><label style="font-size:0.7em; font-weight:bold; color:#2ecc71">PORTFOLIO.CSV</label><br><input type="file" id="filePort"></div>
+        <div class="upload-box" style="text-align: right;"><label>2. PORTFOLIO.CSV</label><input type="file" id="filePort" accept=".csv"></div>
     </div>
 
     <div class="dashboard-grid">
         <div class="card" id="cardDiv" style="display:none;">
             <h2>💰 Dividendos</h2>
+            <div class="total-display" id="totalDivVal">0.00€</div>
             <canvas id="chartDiv"></canvas>
         </div>
 
         <div class="card" id="cardPort" style="display:none;">
+            <h2>📊 Allocation</h2>
             <div class="allocation-menu">
                 <button class="alloc-btn active" onclick="changeAlloc('positions', this)">Positions</button>
                 <button class="alloc-btn" onclick="changeAlloc('type', this)">Type</button>
+                <button class="alloc-btn" onclick="changeAlloc('deepdive', this)">Deep Dive</button>
+                <button class="alloc-btn" onclick="changeAlloc('regions', this)">Regions</button>
+                <button class="alloc-btn" onclick="changeAlloc('sectors', this)">Sectors</button>
             </div>
-            <canvas id="chartPort"></canvas>
+            <div class="donut-container">
+                <canvas id="chartPort"></canvas>
+                <div class="center-text"><span style="font-size:0.7em;color:#888;">TOTAL</span><strong id="totalPortVal">0.00€</strong></div>
+            </div>
         </div>
-    </div>
-
-    <div class="card" id="marketCard" style="display:none;">
-        <h2>🚀 Market Watch (Live Prices)</h2>
-        <p style="font-size: 0.8em; color: #888;">Preços aproximados via Yahoo Finance</p>
-        <table class="market-table">
-            <thead>
-                <tr>
-                    <th>Produto</th>
-                    <th>Preço CSV</th>
-                    <th>Preço Atual</th>
-                    <th>Variação</th>
-                </tr>
-            </thead>
-            <tbody id="marketBody"></tbody>
-        </table>
     </div>
 </div>
 
 <script>
-    let portItems = [];
+    let chartDiv, chartPort, rawDiv = [], portItems = [], cashTotal = 0;
+    let currentMode = 'positions';
 
-    // Função para alternar o tema
+    // Tabelas de classificação fornecidas por ti
+    const assetClassification = {
+        'IE00B5BMR087': 'ETF', 'IE00B3WJKG14': 'ETF', 'IE00BK5BQT80': 'ETF', 
+        'IE00B3XXRP09': 'ETF', 'IE00B8GKDB10': 'ETF', 'IE00BFZXGZ54': 'ETF',
+        'XS2183935274': 'Prata', 'IE00B43VDT70': 'Ouro'
+    };
+
     function toggleTheme() {
         const b = document.body;
-        const t = b.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-        b.setAttribute('data-theme', t);
-        document.getElementById('themeBtn').innerText = t === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+        const theme = b.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+        b.setAttribute('data-theme', theme);
+        document.getElementById('themeBtn').innerText = theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+        if(chartDiv) updateDivs();
+        if(chartPort) changeAlloc(currentMode);
     }
 
     document.getElementById('filePort').addEventListener('change', e => {
         Papa.parse(e.target.files[0], { header: true, skipEmptyLines: true, complete: r => {
-            portItems = [];
-            const tbody = document.getElementById('marketBody');
-            tbody.innerHTML = "";
-
+            portItems = []; cashTotal = 0;
             r.data.forEach(row => {
                 const name = row['Produto'] || "";
-                const isinTicker = row['Ticker / ISIN'] || "";
+                const isin = row['Ticker / ISIN'] || "";
                 const cols = Object.keys(row);
-                const csvPrice = parseFloat((row['Preço'] || "0").replace(/\./g,'').replace(',','.'));
+                const val = parseFloat((row[cols[cols.length-1]]||"0").replace(/\./g,'').replace(',','.'));
                 
-                if(name && !name.includes("CASH") && csvPrice > 0) {
-                    portItems.push({ name, ticker: isinTicker.split(' ')[0], csvPrice });
-                    
-                    // Adicionar linha na tabela
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${name}</td>
-                        <td>${csvPrice.toFixed(2)}€</td>
-                        <td id="price-${isinTicker}">Carregando...</td>
-                        <td id="change-${isinTicker}">-</td>
-                    `;
-                    tbody.appendChild(tr);
-                    
-                    // Simular busca de preço (Aqui integraríamos com API real)
-                    fetchLivePrice(isinTicker, csvPrice);
+                if(name.toUpperCase().includes("CASH") || name.toUpperCase().includes("FTX")) {
+                    cashTotal += val;
+                } else if(val > 0) {
+                    // Identificar o tipo baseado no ISIN
+                    const type = assetClassification[isin.trim()] || 'Stocks';
+                    portItems.push({ name, isin, val, type });
                 }
             });
-            document.getElementById('marketCard').style.display = 'block';
             document.getElementById('cardPort').style.display = 'block';
+            changeAlloc('positions', document.querySelector('.alloc-btn.active'));
         }});
     });
 
-    async function fetchLivePrice(tickerIsin, csvPrice) {
-        // Nota: APIs reais de stock exigem chaves. 
-        // Vou usar um gerador de variação para demonstrar o visual, 
-        // pois APIs diretas no browser sem Proxy costumam ser bloqueadas.
-        setTimeout(() => {
-            const mockChange = (Math.random() * 4 - 2); // Simula variação de -2% a +2%
-            const livePrice = csvPrice + (csvPrice * (mockChange/100));
+    function changeAlloc(mode, btn) {
+        currentMode = mode;
+        if(btn) {
+            document.querySelectorAll('.alloc-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        let labels = [], data = [];
+        const grandTotal = portItems.reduce((a,b) => a + b.val, 0) + cashTotal;
+
+        if(mode === 'positions') {
+            labels = portItems.map(x => x.name);
+            data = portItems.map(x => x.val);
+        } 
+        else if(mode === 'type') {
+            const types = { 'Stocks': 0, 'ETF': 0, 'Ouro': 0, 'Prata': 0, 'Cash': cashTotal };
+            portItems.forEach(item => { types[item.type] += item.val; });
+            // Filtra apenas os tipos que têm valor > 0
+            labels = Object.keys(types).filter(t => types[t] > 0);
+            data = labels.map(l => types[l]);
+        } 
+        else if(mode === 'deepdive') {
+            const sorted = [...portItems].sort((a,b) => b.val - a.val);
+            labels = sorted.slice(0,5).map(x => x.name);
+            data = sorted.slice(0,5).map(x => x.val);
+            const others = sorted.slice(5).reduce((a,b) => a + b.val, 0);
+            if(others > 0) { labels.push("Outros"); data.push(others); }
+        } 
+        else if(mode === 'regions' || mode === 'sectors') {
+            const mapping = mode === 'regions' ? 
+                { 'US': ['ALPHABET', 'AMAZON', 'ABBVIE', 'ALLY', 'AT&T', 'PEPSICO', 'REALTY', 'RIGETTI', 'RITHM', 'STAG', 'VICI', 'MAIN', 'ALEXANDRIA', 'ADR ON PDD'], 'PT': ['NOS', 'NAVIGATOR'], 'EU': ['NOVO NORDISK'] } :
+                { 'Tech': ['ALPHABET', 'AMAZON', 'RIGETTI', 'ADR ON PDD'], 'Health': ['ABBVIE', 'NOVO NORDISK'], 'REITs': ['REALTY', 'STAG', 'VICI', 'ALEXANDRIA'], 'Finance': ['ALLY', 'RITHM', 'MAIN'], 'Others': ['PEPSICO', 'NOS', 'NAVIGATOR', 'AT&T'] };
             
-            const priceEl = document.getElementById(`price-${tickerIsin}`);
-            const changeEl = document.getElementById(`change-${tickerIsin}`);
-            
-            priceEl.innerText = livePrice.toFixed(2) + "€";
-            changeEl.innerText = (mockChange > 0 ? "+" : "") + mockChange.toFixed(2) + "%";
-            changeEl.className = mockChange > 0 ? "up" : "down";
-        }, 1000 + Math.random() * 2000);
+            const grouped = {};
+            portItems.forEach(item => {
+                let found = false;
+                if(item.type !== 'Stocks') { 
+                    const key = item.type; grouped[key] = (grouped[key] || 0) + item.val; found = true;
+                } else {
+                    for(let key in mapping) {
+                        if(mapping[key].some(m => item.name.toUpperCase().includes(m))) {
+                            grouped[key] = (grouped[key] || 0) + item.val; found = true; break;
+                        }
+                    }
+                }
+                if(!found) grouped['Outros'] = (grouped['Outros'] || 0) + item.val;
+            });
+            labels = Object.keys(grouped); data = Object.values(grouped);
+        }
+
+        document.getElementById('totalPortVal').innerText = grandTotal.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+        renderDonut(labels, data, grandTotal);
+    }
+
+    function renderDonut(labels, data, total) {
+        const ctx = document.getElementById('chartPort').getContext('2d');
+        if(chartPort) chartPort.destroy();
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        chartPort = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels, datasets: [{ data, backgroundColor: ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c','#16a085','#f39c12','#d35400'], borderColor: isDark ? '#1e1e1e' : '#fff', borderWidth: 2 }] },
+            options: { cutout: '75%', maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw.toFixed(2)}€ (${((c.raw/total)*100).toFixed(1)}%)` } } } }
+        });
+    }
+
+    // --- DIVIDEND LOGIC ---
+    document.getElementById('fileDiv').addEventListener('change', e => {
+        Papa.parse(e.target.files[0], { header: true, skipEmptyLines: true, complete: r => {
+            rawDiv = r.data; updateDivs(); document.getElementById('cardDiv').style.display = 'block';
+        }});
+    });
+
+    function updateDivs() {
+        const monthly = {}; let total = 0;
+        rawDiv.forEach(r => {
+            if((r['Descrição']||"").toLowerCase() === "dividendo") {
+                const d = r['Data'] || "", mY = d.split('-')[1]+'/'+d.split('-')[2];
+                const rowValues = Object.values(r);
+                const valStr = rowValues.find(v => v && v.includes(',') && !isNaN(parseFloat(v.replace('.','').replace(',','.')))) || "0";
+                const v = parseFloat(valStr.replace(/\./g,'').replace(',','.'));
+                monthly[mY] = (monthly[mY]||0) + v; total += v;
+            }
+        });
+        document.getElementById('totalDivVal').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+        const labels = Object.keys(monthly).sort((a,b) => {
+            const [m1, y1] = a.split('/').map(Number), [m2, y2] = b.split('/').map(Number);
+            return new Date(y1, m1-1) - new Date(y2, m2-1);
+        });
+        if(chartDiv) chartDiv.destroy();
+        chartDiv = new Chart(document.getElementById('chartDiv'), {
+            type:'bar', data: { labels, datasets: [{label:'€', data: labels.map(l=>monthly[l].toFixed(2)), backgroundColor:'#2ecc71'}] },
+            options: { scales: { y: { ticks: { color: document.body.getAttribute('data-theme') === 'dark' ? '#eee' : '#666' } }, x: { ticks: { color: document.body.getAttribute('data-theme') === 'dark' ? '#eee' : '#666' } } } }
+        });
     }
 </script>
 </body>
