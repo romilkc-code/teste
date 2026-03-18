@@ -21,7 +21,6 @@
         
         .card { background: var(--card-bg); padding: 25px; border-radius: 12px; border: 1px solid var(--border); min-height: 550px; }
         
-        /* Menu de Opções de Alocação */
         .allocation-menu { display: flex; justify-content: center; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; }
         .alloc-btn { background: var(--input); border: 1px solid var(--border); color: var(--text-color); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75em; font-weight: bold; }
         .alloc-btn.active { background: #2ecc71; color: white; border-color: #2ecc71; }
@@ -61,15 +60,22 @@
             </div>
             <div class="donut-container">
                 <canvas id="chartPort"></canvas>
-                <div class="center-text"><span id="centerLabel" style="font-size:0.7em;color:#888;">TOTAL</span><strong id="totalPortVal">0.00€</strong></div>
+                <div class="center-text"><span style="font-size:0.7em;color:#888;">TOTAL</span><strong id="totalPortVal">0.00€</strong></div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    let chartDiv, chartPort, rawDiv = [], portData = { all: [], cash: 0, stocks: 0 };
+    let chartDiv, chartPort, rawDiv = [], portItems = [], cashTotal = 0;
     let currentMode = 'positions';
+
+    // Tabelas de classificação fornecidas por ti
+    const assetClassification = {
+        'IE00B5BMR087': 'ETF', 'IE00B3WJKG14': 'ETF', 'IE00BK5BQT80': 'ETF', 
+        'IE00B3XXRP09': 'ETF', 'IE00B8GKDB10': 'ETF', 'IE00BFZXGZ54': 'ETF',
+        'XS2183935274': 'Prata', 'IE00B43VDT70': 'Ouro'
+    };
 
     function toggleTheme() {
         const b = document.body;
@@ -80,16 +86,22 @@
         if(chartPort) changeAlloc(currentMode);
     }
 
-    // --- PORTFOLIO LOGIC ---
     document.getElementById('filePort').addEventListener('change', e => {
         Papa.parse(e.target.files[0], { header: true, skipEmptyLines: true, complete: r => {
-            portData.all = []; portData.cash = 0;
+            portItems = []; cashTotal = 0;
             r.data.forEach(row => {
                 const name = row['Produto'] || "";
+                const isin = row['Ticker / ISIN'] || "";
                 const cols = Object.keys(row);
                 const val = parseFloat((row[cols[cols.length-1]]||"0").replace(/\./g,'').replace(',','.'));
-                if(name.includes("CASH") || name.includes("FTX")) { portData.cash += val; }
-                else if(val > 0) { portData.all.push({ name, val }); }
+                
+                if(name.toUpperCase().includes("CASH") || name.toUpperCase().includes("FTX")) {
+                    cashTotal += val;
+                } else if(val > 0) {
+                    // Identificar o tipo baseado no ISIN
+                    const type = assetClassification[isin.trim()] || 'Stocks';
+                    portItems.push({ name, isin, val, type });
+                }
             });
             document.getElementById('cardPort').style.display = 'block';
             changeAlloc('positions', document.querySelector('.alloc-btn.active'));
@@ -103,35 +115,42 @@
             btn.classList.add('active');
         }
 
-        let labels = [], data = [], title = "TOTAL";
-        const totalStocks = portData.all.reduce((a,b) => a + b.val, 0);
-        const grandTotal = totalStocks + portData.cash;
+        let labels = [], data = [];
+        const grandTotal = portItems.reduce((a,b) => a + b.val, 0) + cashTotal;
 
         if(mode === 'positions') {
-            labels = portData.all.map(x => x.name);
-            data = portData.all.map(x => x.val);
-        } else if(mode === 'type') {
-            labels = ['Stocks/ETFs', 'Cash'];
-            data = [totalStocks, portData.cash];
-        } else if(mode === 'deepdive') {
-            const sorted = [...portData.all].sort((a,b) => b.val - a.val);
+            labels = portItems.map(x => x.name);
+            data = portItems.map(x => x.val);
+        } 
+        else if(mode === 'type') {
+            const types = { 'Stocks': 0, 'ETF': 0, 'Ouro': 0, 'Prata': 0, 'Cash': cashTotal };
+            portItems.forEach(item => { types[item.type] += item.val; });
+            // Filtra apenas os tipos que têm valor > 0
+            labels = Object.keys(types).filter(t => types[t] > 0);
+            data = labels.map(l => types[l]);
+        } 
+        else if(mode === 'deepdive') {
+            const sorted = [...portItems].sort((a,b) => b.val - a.val);
             labels = sorted.slice(0,5).map(x => x.name);
             data = sorted.slice(0,5).map(x => x.val);
-            labels.push("Outros");
-            data.push(sorted.slice(5).reduce((a,b) => a + b.val, 0));
-        } else if(mode === 'regions' || mode === 'sectors') {
-            // Mapeamento manual para o teu ficheiro específico
+            const others = sorted.slice(5).reduce((a,b) => a + b.val, 0);
+            if(others > 0) { labels.push("Outros"); data.push(others); }
+        } 
+        else if(mode === 'regions' || mode === 'sectors') {
             const mapping = mode === 'regions' ? 
                 { 'US': ['ALPHABET', 'AMAZON', 'ABBVIE', 'ALLY', 'AT&T', 'PEPSICO', 'REALTY', 'RIGETTI', 'RITHM', 'STAG', 'VICI', 'MAIN', 'ALEXANDRIA', 'ADR ON PDD'], 'PT': ['NOS', 'NAVIGATOR'], 'EU': ['NOVO NORDISK'] } :
                 { 'Tech': ['ALPHABET', 'AMAZON', 'RIGETTI', 'ADR ON PDD'], 'Health': ['ABBVIE', 'NOVO NORDISK'], 'REITs': ['REALTY', 'STAG', 'VICI', 'ALEXANDRIA'], 'Finance': ['ALLY', 'RITHM', 'MAIN'], 'Others': ['PEPSICO', 'NOS', 'NAVIGATOR', 'AT&T'] };
             
             const grouped = {};
-            portData.all.forEach(item => {
+            portItems.forEach(item => {
                 let found = false;
-                for(let key in mapping) {
-                    if(mapping[key].some(m => item.name.toUpperCase().includes(m))) {
-                        grouped[key] = (grouped[key] || 0) + item.val;
-                        found = true; break;
+                if(item.type !== 'Stocks') { 
+                    const key = item.type; grouped[key] = (grouped[key] || 0) + item.val; found = true;
+                } else {
+                    for(let key in mapping) {
+                        if(mapping[key].some(m => item.name.toUpperCase().includes(m))) {
+                            grouped[key] = (grouped[key] || 0) + item.val; found = true; break;
+                        }
                     }
                 }
                 if(!found) grouped['Outros'] = (grouped['Outros'] || 0) + item.val;
@@ -149,12 +168,12 @@
         const isDark = document.body.getAttribute('data-theme') === 'dark';
         chartPort = new Chart(ctx, {
             type: 'doughnut',
-            data: { labels, datasets: [{ data, backgroundColor: ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c','#16a085'], borderColor: isDark ? '#1e1e1e' : '#fff', borderWidth: 2 }] },
+            data: { labels, datasets: [{ data, backgroundColor: ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c','#16a085','#f39c12','#d35400'], borderColor: isDark ? '#1e1e1e' : '#fff', borderWidth: 2 }] },
             options: { cutout: '75%', maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw.toFixed(2)}€ (${((c.raw/total)*100).toFixed(1)}%)` } } } }
         });
     }
 
-    // --- DIVIDEND LOGIC (Resumida para caber) ---
+    // --- DIVIDEND LOGIC ---
     document.getElementById('fileDiv').addEventListener('change', e => {
         Papa.parse(e.target.files[0], { header: true, skipEmptyLines: true, complete: r => {
             rawDiv = r.data; updateDivs(); document.getElementById('cardDiv').style.display = 'block';
@@ -166,16 +185,21 @@
         rawDiv.forEach(r => {
             if((r['Descrição']||"").toLowerCase() === "dividendo") {
                 const d = r['Data'] || "", mY = d.split('-')[1]+'/'+d.split('-')[2];
-                const v = parseFloat(Object.values(r).find(v=>v&&v.includes(',')&&!isNaN(parseFloat(v.replace('.','').replace(',','.'))))?.replace('.','').replace(',','.') || 0);
+                const rowValues = Object.values(r);
+                const valStr = rowValues.find(v => v && v.includes(',') && !isNaN(parseFloat(v.replace('.','').replace(',','.')))) || "0";
+                const v = parseFloat(valStr.replace(/\./g,'').replace(',','.'));
                 monthly[mY] = (monthly[mY]||0) + v; total += v;
             }
         });
         document.getElementById('totalDivVal').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
-        const labels = Object.keys(monthly).sort();
+        const labels = Object.keys(monthly).sort((a,b) => {
+            const [m1, y1] = a.split('/').map(Number), [m2, y2] = b.split('/').map(Number);
+            return new Date(y1, m1-1) - new Date(y2, m2-1);
+        });
         if(chartDiv) chartDiv.destroy();
         chartDiv = new Chart(document.getElementById('chartDiv'), {
-            type:'bar', data: { labels, datasets: [{label:'€', data: labels.map(l=>monthly[l]), backgroundColor:'#2ecc71'}] },
-            options: { scales: { y: { ticks: { color: document.body.getAttribute('data-theme') === 'dark' ? '#eee' : '#666' } } } }
+            type:'bar', data: { labels, datasets: [{label:'€', data: labels.map(l=>monthly[l].toFixed(2)), backgroundColor:'#2ecc71'}] },
+            options: { scales: { y: { ticks: { color: document.body.getAttribute('data-theme') === 'dark' ? '#eee' : '#666' } }, x: { ticks: { color: document.body.getAttribute('data-theme') === 'dark' ? '#eee' : '#666' } } } }
         });
     }
 </script>
