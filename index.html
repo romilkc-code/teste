@@ -20,25 +20,26 @@
         .card h2 { margin-top: 0; font-size: 1.2em; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
         
         .filters { display: flex; gap: 10px; margin-bottom: 15px; }
-        select { padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-size: 0.85em; flex: 1; outline: none; }
+        select { padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-size: 0.85em; flex: 1; }
 
-        /* Estilo da Lista de Transações (Baseado na imagem) */
+        /* Lista de Transações */
         .transaction-list { margin-top: 25px; border-top: 1px solid #eee; padding-top: 20px; }
-        .transaction-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f9f9f9; font-size: 0.9em; }
-        .transaction-item:last-child { border-bottom: none; }
-        .tx-info { display: flex; flex-direction: column; }
-        .tx-name { font-weight: bold; color: #2c3e50; }
+        .transaction-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #f9f9f9; font-size: 0.85em; }
+        .tx-name { font-weight: bold; }
         .tx-date { font-size: 0.8em; color: #95a5a6; }
         .tx-amount { font-weight: bold; color: #2ecc71; }
 
-        /* Botão Show More */
-        .show-more-btn { width: 100%; padding: 12px; margin-top: 15px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; color: #2ecc71; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .show-more-btn:hover { background: #2ecc71; color: white; }
+        /* Tabela de Performance (Estilo Imagem 2) */
+        #performanceTable { display: none; margin-top: 20px; width: 100%; border-collapse: collapse; background: #fdfdfd; border-radius: 8px; overflow: hidden; }
+        #performanceTable th, #performanceTable td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9em; }
+        #performanceTable th { background: #f8f9fa; color: #666; }
+        .trend-up { color: #2ecc71; font-weight: bold; }
+        .trend-down { color: #e74c3c; font-weight: bold; }
 
-        .donut-container { position: relative; height: 350px; width: 100%; }
-        .center-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; width: 100%; }
-        .center-text span { display: block; font-size: 0.75em; color: #666; font-weight: bold; }
-        .center-text strong { font-size: 1.4em; color: #333; }
+        .show-more-btn { width: 100%; padding: 12px; margin-top: 15px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; color: #2ecc71; font-weight: bold; cursor: pointer; }
+        
+        .donut-container { position: relative; height: 350px; }
+        .center-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 100%; }
         .total-display { font-size: 1.8em; font-weight: bold; color: #2ecc71; margin-bottom: 10px; }
     </style>
 </head>
@@ -46,19 +47,13 @@
 
 <div class="container">
     <div class="top-bar">
-        <div class="upload-box">
-            <label>1. Dividendos (Account.csv)</label>
-            <input type="file" id="fileDividendos" accept=".csv">
-        </div>
-        <div class="upload-box" style="text-align: right;">
-            <label>2. Carteira (Portfolio.csv)</label>
-            <input type="file" id="filePortfolio" accept=".csv">
-        </div>
+        <div class="upload-box"><label>1. Dividendos (Account.csv)</label><input type="file" id="fileDividendos" accept=".csv"></div>
+        <div class="upload-box" style="text-align: right;"><label>2. Carteira (Portfolio.csv)</label><input type="file" id="filePortfolio" accept=".csv"></div>
     </div>
 
     <div class="dashboard-grid">
         <div class="card" id="cardDiv" style="display:none;">
-            <h2>💰 Histórico de Dividendos</h2>
+            <h2>💰 Dividendos & Performance</h2>
             <div class="filters">
                 <select id="prodFilter"><option value="all">Todas as Ações</option></select>
                 <select id="yearFilter"><option value="all">Todos os Anos</option></select>
@@ -68,7 +63,14 @@
 
             <div class="transaction-list">
                 <div id="txItemsContainer"></div>
-                <button class="show-more-btn" id="btnShowMore">SHOW MORE</button>
+                <button class="show-more-btn" id="btnShowMore">SHOW PERFORMANCE PER YEAR</button>
+                
+                <table id="performanceTable">
+                    <thead>
+                        <tr><th>Ano</th><th>Total Bruto</th><th>Crescimento (%)</th></tr>
+                    </thead>
+                    <tbody id="performanceBody"></tbody>
+                </table>
             </div>
         </div>
 
@@ -76,38 +78,26 @@
             <h2>📊 Alocação da Carteira</h2>
             <div class="donut-container">
                 <canvas id="chartPort"></canvas>
-                <div class="center-text">
-                    <span>VALOR TOTAL</span>
-                    <strong id="totalPortValue">0.00€</strong>
-                </div>
+                <div class="center-text"><span>TOTAL</span><br><strong id="totalPortValue">0.00€</strong></div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    let chartDiv, chartPort;
-    let rawDivData = [];
+    let chartDiv, chartPort, rawDivData = [];
 
-    // --- DIVIDENDOS ---
     document.getElementById('fileDividendos').addEventListener('change', function(e) {
-        Papa.parse(e.target.files[0], {
-            header: true, skipEmptyLines: true,
-            complete: function(results) {
-                rawDivData = results.data;
-                setupDivFilters(results.data);
-                processDivs();
-                document.getElementById('cardDiv').style.display = 'block';
-            }
-        });
+        Papa.parse(e.target.files[0], { header: true, skipEmptyLines: true, complete: function(results) {
+            rawDivData = results.data; setupDivFilters(results.data); processDivs();
+            document.getElementById('cardDiv').style.display = 'block';
+        }});
     });
 
-    document.getElementById('prodFilter').addEventListener('change', processDivs);
-    document.getElementById('yearFilter').addEventListener('change', processDivs);
-    
-    // O Botão SHOW MORE aguarda as tuas instruções na próxima interação
     document.getElementById('btnShowMore').addEventListener('click', function() {
-        console.log("Botão clicado. Aguardando função do utilizador...");
+        const table = document.getElementById('performanceTable');
+        table.style.display = table.style.display === 'none' ? 'table' : 'none';
+        this.innerText = table.style.display === 'none' ? 'SHOW PERFORMANCE PER YEAR' : 'HIDE PERFORMANCE';
     });
 
     function setupDivFilters(data) {
@@ -126,54 +116,62 @@
     }
 
     function processDivs() {
-        const monthly = {}, fProd = document.getElementById('prodFilter').value, fYear = document.getElementById('yearFilter').value;
-        let total = 0;
-        let filteredTxs = [];
+        const monthly = {}, yearlyTotals = {}, fProd = document.getElementById('prodFilter').value, fYear = document.getElementById('yearFilter').value;
+        let totalSel = 0, filteredTxs = [];
 
         rawDivData.forEach(r => {
             if((r['Descrição']||"").toLowerCase() === "dividendo") {
                 const data = r['Data'] || "", ano = data.split('-')[2], mesAno = data.split('-')[1]+'/'+ano;
-                
-                if((fProd==='all'||r['Produto']===fProd) && (fYear==='all'||ano===fYear)) {
-                    const rowValues = Object.values(r);
-                    const valStr = rowValues.find(v => v && v.includes(',') && !isNaN(parseFloat(v.replace('.','').replace(',','.')))) || "0";
-                    const val = parseFloat(valStr.replace(/\./g,'').replace(',','.'));
-                    
-                    monthly[mesAno] = (monthly[mesAno] || 0) + val;
-                    total += val;
+                const rowValues = Object.values(r);
+                const valStr = rowValues.find(v => v && v.includes(',') && !isNaN(parseFloat(v.replace('.','').replace(',','.')))) || "0";
+                const val = parseFloat(valStr.replace(/\./g,'').replace(',','.'));
 
-                    filteredTxs.push({ data: data, produto: r['Produto'], valor: val });
+                // Somar para a performance anual (independente de filtros de ano para o cálculo de crescimento)
+                if(fProd === 'all' || r['Produto'] === fProd) {
+                    yearlyTotals[ano] = (yearlyTotals[ano] || 0) + val;
+                }
+
+                if((fProd==='all'||r['Produto']===fProd) && (fYear==='all'||ano===fYear)) {
+                    monthly[mesAno] = (monthly[mesAno] || 0) + val;
+                    totalSel += val;
+                    filteredTxs.push({ data, produto: r['Produto'], valor: val });
                 }
             }
         });
 
-        // Ordenar transações da mais recente para a mais antiga
-        filteredTxs.sort((a,b) => {
-            const dateA = new Date(a.data.split('-').reverse().join('-'));
-            const dateB = new Date(b.data.split('-').reverse().join('-'));
-            return dateB - dateA;
-        });
+        renderPerformance(yearlyTotals);
+        renderTxList(filteredTxs.sort((a,b) => new Date(b.data.split('-').reverse().join('-')) - new Date(a.data.split('-').reverse().join('-'))));
+        updateDivChart(monthly, totalSel);
+    }
 
-        renderTxList(filteredTxs);
-        updateDivChart(monthly, total);
+    function renderPerformance(yearlyData) {
+        const body = document.getElementById('performanceBody');
+        body.innerHTML = "";
+        const years = Object.keys(yearlyData).sort();
+        
+        years.forEach((year, i) => {
+            const current = yearlyData[year];
+            const previous = yearlyData[years[i-1]];
+            let growth = "---";
+            let trendClass = "";
+
+            if (previous) {
+                const diff = ((current - previous) / previous) * 100;
+                growth = (diff > 0 ? "+" : "") + diff.toFixed(1) + "%";
+                trendClass = diff >= 0 ? "trend-up" : "trend-down";
+            }
+
+            body.innerHTML += `<tr><td>${year}</td><td>${current.toFixed(2)}€</td><td class="${trendClass}">${growth}</td></tr>`;
+        });
     }
 
     function renderTxList(txs) {
         const container = document.getElementById('txItemsContainer');
-        container.innerHTML = "";
-        // Mostrar apenas as primeiras 5 transações por defeito
-        txs.slice(0, 5).forEach(tx => {
-            const div = document.createElement('div');
-            div.className = 'transaction-item';
-            div.innerHTML = `
-                <div class="tx-info">
-                    <span class="tx-name">${tx.produto}</span>
-                    <span class="tx-date">${tx.data}</span>
-                </div>
+        container.innerHTML = txs.slice(0, 5).map(tx => `
+            <div class="transaction-item">
+                <div><span class="tx-name">${tx.produto}</span><br><span class="tx-date">${tx.data}</span></div>
                 <div class="tx-amount">+${tx.valor.toFixed(2)}€</div>
-            `;
-            container.appendChild(div);
-        });
+            </div>`).join('');
     }
 
     function updateDivChart(monthly, total) {
@@ -185,37 +183,21 @@
         });
     }
 
-    // --- CARTEIRA ---
     document.getElementById('filePortfolio').addEventListener('change', function(e) {
-        Papa.parse(e.target.files[0], {
-            header: true, skipEmptyLines: true,
-            complete: function(results) {
-                processPortfolio(results.data);
-                document.getElementById('cardPort').style.display = 'block';
-            }
-        });
+        Papa.parse(e.target.files[0], { header: true, skipEmptyLines: true, complete: function(results) { processPortfolio(results.data); document.getElementById('cardPort').style.display = 'block'; }});
     });
 
     function processPortfolio(data) {
         let total = 0; const ativos = {};
         data.forEach(r => {
-            const prod = r['Produto'];
-            if (prod && !prod.includes("CASH") && !prod.includes("CURRENCY")) {
-                const colunas = Object.keys(r);
-                const ultimaColuna = colunas[colunas.length - 1];
-                const valStr = r[ultimaColuna] || "0";
-                const val = parseFloat(valStr.replace(/\./g,'').replace(',','.'));
-                if(!isNaN(val) && val > 0) { ativos[prod] = (ativos[prod]||0) + val; total += val; }
-            }
+            const prod = r['Produto'], col = Object.keys(r), valStr = r[col[col.length-1]] || "0";
+            const val = parseFloat(valStr.replace(/\./g,'').replace(',','.'));
+            if(prod && !prod.includes("CASH") && val > 0) { ativos[prod] = (ativos[prod]||0) + val; total += val; }
         });
         document.getElementById('totalPortValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
         if(chartPort) chartPort.destroy();
         chartPort = new Chart(document.getElementById('chartPort'), {
-            type: 'doughnut',
-            data: {
-                labels: Object.keys(ativos),
-                datasets: [{ data: Object.values(ativos), backgroundColor: ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c'] }]
-            },
+            type: 'doughnut', data: { labels: Object.keys(ativos), datasets: [{ data: Object.values(ativos), backgroundColor: ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c'] }] },
             options: { cutout:'75%', maintainAspectRatio: false, plugins:{ legend:{display:false} } }
         });
     }
