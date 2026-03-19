@@ -19,186 +19,156 @@
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); position: relative; }
         .card h2 { margin-top: 0; font-size: 1.2em; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
         
-        .filters { display: flex; gap: 10px; margin-bottom: 15px; }
-        select { padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-size: 0.85em; flex: 1; }
+        .total-display { font-size: 1.8em; font-weight: bold; color: #2ecc71; margin-bottom: 10px; }
 
-        /* Lista de Transações */
-        .transaction-list { margin-top: 25px; border-top: 1px solid #eee; padding-top: 20px; }
-        .transaction-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #f9f9f9; font-size: 0.85em; }
-        .tx-name { font-weight: bold; }
-        .tx-date { font-size: 0.8em; color: #95a5a6; }
+        /* Lista de Transações Estilo Imagem 1 */
+        .transaction-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f8f9fa; }
+        .tx-name { font-weight: bold; font-size: 0.9em; }
+        .tx-date { font-size: 0.8em; color: #999; }
         .tx-amount { font-weight: bold; color: #2ecc71; }
 
-        /* Tabela de Performance (Estilo Imagem 2) */
-        #performanceTable { display: none; margin-top: 20px; width: 100%; border-collapse: collapse; background: #fdfdfd; border-radius: 8px; overflow: hidden; }
-        #performanceTable th, #performanceTable td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9em; }
-        #performanceTable th { background: #f8f9fa; color: #666; }
+        .show-more-btn { width: 100%; padding: 12px; margin-top: 15px; background: #f8f9fa; border: 1px solid #eee; border-radius: 8px; color: #2ecc71; font-weight: bold; cursor: pointer; }
+
+        /* MODAL (A "Outra Janela") */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); }
+        .modal-content { background: white; margin: 5% auto; padding: 30px; width: 80%; max-width: 800px; border-radius: 15px; position: relative; max-height: 85vh; overflow-y: auto; }
+        .close-modal { position: absolute; right: 20px; top: 20px; font-size: 24px; cursor: pointer; color: #999; }
+
+        #perfTable { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        #perfTable th, #perfTable td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
         .trend-up { color: #2ecc71; font-weight: bold; }
         .trend-down { color: #e74c3c; font-weight: bold; }
-
-        .show-more-btn { width: 100%; padding: 12px; margin-top: 15px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; color: #2ecc71; font-weight: bold; cursor: pointer; }
-        
-        .donut-container { position: relative; height: 350px; }
-        .center-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 100%; }
-        .total-display { font-size: 1.8em; font-weight: bold; color: #2ecc71; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="top-bar">
-        <div class="upload-box"><label>1. Dividendos (Account.csv)</label><input type="file" id="fileDividendos" accept=".csv"></div>
-        <div class="upload-box" style="text-align: right;"><label>2. Carteira (Portfolio.csv)</label><input type="file" id="filePortfolio" accept=".csv"></div>
+        <div class="upload-box"><label>1. Dividendos (Account.csv)</label><input type="file" id="fileDividendos"></div>
+        <div class="upload-box" style="text-align: right;"><label>2. Carteira (Portfolio.csv)</label><input type="file" id="filePortfolio"></div>
     </div>
 
     <div class="dashboard-grid">
         <div class="card" id="cardDiv" style="display:none;">
-            <h2>💰 Dividendos & Performance</h2>
-            <div class="filters">
-                <select id="prodFilter"><option value="all">Todas as Ações</option></select>
-                <select id="yearFilter"><option value="all">Todos os Anos</option></select>
-            </div>
-            <div class="total-display" id="totalDivValue">0.00€</div>
-            <canvas id="chartDiv"></canvas>
-
-            <div class="transaction-list">
-                <div id="txItemsContainer"></div>
-                <button class="show-more-btn" id="btnShowMore">SHOW PERFORMANCE PER YEAR</button>
-                
-                <table id="performanceTable">
-                    <thead>
-                        <tr><th>Ano</th><th>Total Bruto</th><th>Crescimento (%)</th></tr>
-                    </thead>
-                    <tbody id="performanceBody"></tbody>
-                </table>
-            </div>
+            <h2>💰 Dividendos</h2>
+            <div id="totalDivValue" class="total-display">0.00€</div>
+            <canvas id="chartDiv" style="max-height: 250px;"></canvas>
+            <div id="txItemsContainer" style="margin-top: 20px;"></div>
+            <button class="show-more-btn" id="btnOpenModal">SHOW PERFORMANCE PER YEAR</button>
         </div>
 
         <div class="card" id="cardPort" style="display:none;">
-            <h2>📊 Alocação da Carteira</h2>
-            <div class="donut-container">
+            <h2>📊 Portefólio</h2>
+            <div style="position: relative; height: 300px;">
                 <canvas id="chartPort"></canvas>
-                <div class="center-text"><span>TOTAL</span><br><strong id="totalPortValue">0.00€</strong></div>
+                <div style="position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center;">
+                    <span style="font-size: 0.7em; color: #666;">TOTAL</span><br>
+                    <strong id="totalPortValue" style="font-size: 1.2em;">0.00€</strong>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+<div id="perfModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" id="btnCloseModal">&times;</span>
+        <h2 style="margin-top: 0;">📈 Performance Anual</h2>
+        <canvas id="chartPerf" style="max-height: 300px;"></canvas>
+        <table id="perfTable">
+            <thead><tr><th>Ano</th><th>Total Bruto</th><th>Crescimento (%)</th></tr></thead>
+            <tbody id="perfBody"></tbody>
+        </table>
+    </div>
+</div>
+
 <script>
-    let chartDiv, chartPort, rawDivData = [];
+    let chartDiv, chartPort, chartPerf, rawDivData = [];
+
+    // Abrir/Fechar Janela
+    document.getElementById('btnOpenModal').onclick = () => document.getElementById('perfModal').style.display = 'block';
+    document.getElementById('btnCloseModal').onclick = () => document.getElementById('perfModal').style.display = 'none';
+    window.onclick = (event) => { if(event.target.id == 'perfModal') document.getElementById('perfModal').style.display = 'none'; }
 
     document.getElementById('fileDividendos').addEventListener('change', function(e) {
-        Papa.parse(e.target.files[0], { header: true, skipEmptyLines: true, complete: function(results) {
-            rawDivData = results.data; setupDivFilters(results.data); processDivs();
-            document.getElementById('cardDiv').style.display = 'block';
+        Papa.parse(e.target.files[0], { header: true, complete: (res) => { 
+            rawDivData = res.data; processDivs(); document.getElementById('cardDiv').style.display = 'block'; 
         }});
     });
 
-    document.getElementById('btnShowMore').addEventListener('click', function() {
-        const table = document.getElementById('performanceTable');
-        table.style.display = table.style.display === 'none' ? 'table' : 'none';
-        this.innerText = table.style.display === 'none' ? 'SHOW PERFORMANCE PER YEAR' : 'HIDE PERFORMANCE';
-    });
-
-    function setupDivFilters(data) {
-        const pSel = document.getElementById('prodFilter'), ySel = document.getElementById('yearFilter');
-        const prods = new Set(), years = new Set();
-        data.forEach(r => {
-            if((r['Descrição']||"").toLowerCase().includes("dividendo")) {
-                if(r['Produto']) prods.add(r['Produto']);
-                if(r['Data']) years.add(r['Data'].split('-')[2]);
-            }
-        });
-        pSel.innerHTML = '<option value="all">Todas as Ações</option>';
-        Array.from(prods).sort().forEach(p => pSel.add(new Option(p, p)));
-        ySel.innerHTML = '<option value="all">Todos os Anos</option>';
-        Array.from(years).sort((a,b)=>b-a).forEach(y => ySel.add(new Option(y, y)));
-    }
-
     function processDivs() {
-        const monthly = {}, yearlyTotals = {}, fProd = document.getElementById('prodFilter').value, fYear = document.getElementById('yearFilter').value;
-        let totalSel = 0, filteredTxs = [];
+        const monthly = {}, yearly = {};
+        let total = 0, txs = [];
 
         rawDivData.forEach(r => {
             if((r['Descrição']||"").toLowerCase() === "dividendo") {
                 const data = r['Data'] || "", ano = data.split('-')[2], mesAno = data.split('-')[1]+'/'+ano;
-                const rowValues = Object.values(r);
-                const valStr = rowValues.find(v => v && v.includes(',') && !isNaN(parseFloat(v.replace('.','').replace(',','.')))) || "0";
-                const val = parseFloat(valStr.replace(/\./g,'').replace(',','.'));
-
-                // Somar para a performance anual (independente de filtros de ano para o cálculo de crescimento)
-                if(fProd === 'all' || r['Produto'] === fProd) {
-                    yearlyTotals[ano] = (yearlyTotals[ano] || 0) + val;
-                }
-
-                if((fProd==='all'||r['Produto']===fProd) && (fYear==='all'||ano===fYear)) {
-                    monthly[mesAno] = (monthly[mesAno] || 0) + val;
-                    totalSel += val;
-                    filteredTxs.push({ data, produto: r['Produto'], valor: val });
-                }
+                const val = parseFloat(Object.values(r).find(v => v?.includes(',') && !isNaN(parseFloat(v.replace('.','').replace(',','.'))))?.replace('.','').replace(',','.') || 0);
+                
+                monthly[mesAno] = (monthly[mesAno] || 0) + val;
+                yearly[ano] = (yearly[ano] || 0) + val;
+                total += val;
+                txs.push({ data, produto: r['Produto'], valor: val });
             }
         });
 
-        renderPerformance(yearlyTotals);
-        renderTxList(filteredTxs.sort((a,b) => new Date(b.data.split('-').reverse().join('-')) - new Date(a.data.split('-').reverse().join('-'))));
-        updateDivChart(monthly, totalSel);
+        updateDashboard(monthly, total, txs, yearly);
     }
 
-    function renderPerformance(yearlyData) {
-        const body = document.getElementById('performanceBody');
-        body.innerHTML = "";
-        const years = Object.keys(yearlyData).sort();
-        
-        years.forEach((year, i) => {
-            const current = yearlyData[year];
-            const previous = yearlyData[years[i-1]];
-            let growth = "---";
-            let trendClass = "";
-
-            if (previous) {
-                const diff = ((current - previous) / previous) * 100;
-                growth = (diff > 0 ? "+" : "") + diff.toFixed(1) + "%";
-                trendClass = diff >= 0 ? "trend-up" : "trend-down";
-            }
-
-            body.innerHTML += `<tr><td>${year}</td><td>${current.toFixed(2)}€</td><td class="${trendClass}">${growth}</td></tr>`;
-        });
-    }
-
-    function renderTxList(txs) {
-        const container = document.getElementById('txItemsContainer');
-        container.innerHTML = txs.slice(0, 5).map(tx => `
-            <div class="transaction-item">
-                <div><span class="tx-name">${tx.produto}</span><br><span class="tx-date">${tx.data}</span></div>
-                <div class="tx-amount">+${tx.valor.toFixed(2)}€</div>
-            </div>`).join('');
-    }
-
-    function updateDivChart(monthly, total) {
+    function updateDashboard(monthly, total, txs, yearly) {
+        // Gráfico Mensal
         const labels = Object.keys(monthly).sort((a,b) => new Date(a.split('/')[1], a.split('/')[0]-1) - new Date(b.split('/')[1], b.split('/')[0]-1));
         document.getElementById('totalDivValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
         if(chartDiv) chartDiv.destroy();
         chartDiv = new Chart(document.getElementById('chartDiv'), {
-            type:'bar', data: { labels, datasets:[{label:'€', data: labels.map(l=>monthly[l].toFixed(2)), backgroundColor:'#2ecc71', borderRadius: 4}] }
+            type:'bar', data: { labels, datasets:[{label:'€', data: labels.map(l=>monthly[l].toFixed(2)), backgroundColor:'#2ecc71', borderRadius: 5}] }
+        });
+
+        // Lista de Transações
+        document.getElementById('txItemsContainer').innerHTML = txs.sort((a,b)=>new Date(b.data.split('-').reverse().join('-'))-new Date(a.data.split('-').reverse().join('-'))).slice(0,5).map(t => `
+            <div class="transaction-item">
+                <div><div class="tx-name">${t.produto}</div><div class="tx-date">${t.data}</div></div>
+                <div class="tx-amount">+${t.valor.toFixed(2)}€</div>
+            </div>`).join('');
+
+        // Gráfico de Performance (Na nova janela)
+        renderPerformance(yearly);
+    }
+
+    function renderPerformance(yearly) {
+        const years = Object.keys(yearly).sort();
+        const values = years.map(y => yearly[y]);
+        const body = document.getElementById('perfBody');
+        body.innerHTML = "";
+
+        if(chartPerf) chartPerf.destroy();
+        chartPerf = new Chart(document.getElementById('chartPerf'), {
+            type:'bar', data: { labels: years, datasets:[{label:'Total Anual (€)', data: values, backgroundColor:'#3498db', borderRadius: 8}] },
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+
+        years.forEach((y, i) => {
+            const growth = i > 0 ? (((yearly[y] - yearly[years[i-1]]) / yearly[years[i-1]]) * 100).toFixed(1) : null;
+            body.innerHTML += `<tr><td>${y}</td><td>${yearly[y].toFixed(2)}€</td><td class="${growth >= 0 ? 'trend-up' : 'trend-down'}">${growth ? (growth > 0 ? '+'+growth : growth)+'%' : '---'}</td></tr>`;
         });
     }
 
+    // Lógica Carteira
     document.getElementById('filePortfolio').addEventListener('change', function(e) {
-        Papa.parse(e.target.files[0], { header: true, skipEmptyLines: true, complete: function(results) { processPortfolio(results.data); document.getElementById('cardPort').style.display = 'block'; }});
+        Papa.parse(e.target.files[0], { header: true, complete: (res) => { processPortfolio(res.data); document.getElementById('cardPort').style.display = 'block'; }});
     });
 
     function processPortfolio(data) {
-        let total = 0; const ativos = {};
+        let t = 0; const a = {};
         data.forEach(r => {
-            const prod = r['Produto'], col = Object.keys(r), valStr = r[col[col.length-1]] || "0";
-            const val = parseFloat(valStr.replace(/\./g,'').replace(',','.'));
-            if(prod && !prod.includes("CASH") && val > 0) { ativos[prod] = (ativos[prod]||0) + val; total += val; }
+            const prod = r['Produto'], col = Object.keys(r), val = parseFloat((r[col[col.length-1]]||"0").replace('.','').replace(',','.'));
+            if(prod && !prod.includes("CASH") && val > 0) { a[prod] = (a[prod]||0) + val; t += val; }
         });
-        document.getElementById('totalPortValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+        document.getElementById('totalPortValue').innerText = t.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
         if(chartPort) chartPort.destroy();
         chartPort = new Chart(document.getElementById('chartPort'), {
-            type: 'doughnut', data: { labels: Object.keys(ativos), datasets: [{ data: Object.values(ativos), backgroundColor: ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c'] }] },
-            options: { cutout:'75%', maintainAspectRatio: false, plugins:{ legend:{display:false} } }
+            type: 'doughnut', data: { labels: Object.keys(a), datasets:[{data: Object.values(a), backgroundColor:['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22']}]},
+            options: { cutout:'75%', maintainAspectRatio:false, plugins:{legend:{display:false}}}
         });
     }
 </script>
