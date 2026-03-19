@@ -12,31 +12,21 @@
         .top-bar { display: flex; justify-content: space-between; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; flex-wrap: wrap; gap: 20px; }
         .upload-box { flex: 1; min-width: 250px; }
         .upload-box label { display: block; font-weight: bold; font-size: 0.85em; margin-bottom: 5px; color: #2ecc71; }
-        
         .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         @media (max-width: 800px) { .dashboard-grid { grid-template-columns: 1fr; } }
-        
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); position: relative; }
         .card h2 { margin-top: 0; font-size: 1.1em; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; color: #666; text-transform: uppercase; }
-        
-        /* Lista de Transações e Ativos */
         .item-list { margin-top: 20px; }
         .list-row { display: flex; flex-direction: column; padding: 12px 0; border-bottom: 1px solid #f8f9fa; }
         .list-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9em; }
         .item-name { font-weight: bold; }
         .item-val { font-weight: bold; color: #2ecc71; }
-        
-        /* Barra de Percentagem conforme a imagem */
         .progress-bg { background: #eee; height: 6px; border-radius: 10px; width: 100%; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 10px; transition: width 1s ease-in-out; }
-
         .show-more-btn { width: 100%; padding: 12px; margin-top: 15px; background: #f8f9fa; border: 1px solid #eee; border-radius: 8px; color: #2ecc71; font-weight: bold; cursor: pointer; }
-
-        /* MODAL */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); }
         .modal-content { background: white; margin: 5% auto; padding: 30px; width: 80%; max-width: 800px; border-radius: 15px; position: relative; }
         .close-modal { position: absolute; right: 20px; top: 20px; font-size: 24px; cursor: pointer; color: #999; }
-
         .total-display { font-size: 2em; font-weight: bold; color: #2ecc71; margin-bottom: 15px; }
     </style>
 </head>
@@ -76,7 +66,6 @@
         <span class="close-modal" id="btnCloseModal">&times;</span>
         <h2 style="margin-top:0">Evolução Anual</h2>
         <canvas id="chartPerf" style="max-height: 300px; margin-bottom: 20px;"></canvas>
-        <div id="perfTableContainer"></div>
     </div>
 </div>
 
@@ -84,18 +73,38 @@
     let chartDiv, chartPort, chartPerf, rawDivData = [];
     const colors = ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c','#16a085','#27ae60','#2980b9'];
 
-    // Lógica do Modal
+    // AO CARREGAR A PÁGINA: Verificar se há dados salvos
+    window.onload = () => {
+        const savedDivs = localStorage.getItem('degiro_div_data');
+        const savedPort = localStorage.getItem('degiro_port_data');
+
+        if (savedDivs) {
+            rawDivData = JSON.parse(savedDivs);
+            processDivs(false); // false para não salvar novamente o que já veio do cache
+            document.getElementById('cardDiv').style.display = 'block';
+        }
+
+        if (savedPort) {
+            processPortfolio(JSON.parse(savedPort), false);
+            document.getElementById('cardPort').style.display = 'block';
+        }
+    };
+
     document.getElementById('btnOpenModal').onclick = () => document.getElementById('perfModal').style.display = 'block';
     document.getElementById('btnCloseModal').onclick = () => document.getElementById('perfModal').style.display = 'none';
 
-    // --- PROCESSAR DIVIDENDOS ---
+    // --- DIVIDENDOS ---
     document.getElementById('fileDividendos').addEventListener('change', function(e) {
         Papa.parse(e.target.files[0], { header: true, complete: (res) => { 
-            rawDivData = res.data; processDivs(); document.getElementById('cardDiv').style.display = 'block'; 
+            rawDivData = res.data;
+            processDivs(true); // true para guardar no LocalStorage
+            document.getElementById('cardDiv').style.display = 'block'; 
         }});
     });
 
-    function processDivs() {
+    function processDivs(shouldSave) {
+        if(shouldSave) localStorage.setItem('degiro_div_data', JSON.stringify(rawDivData));
+        
         const monthly = {}, yearly = {};
         let total = 0, txs = [];
         rawDivData.forEach(r => {
@@ -128,45 +137,39 @@
         chartPerf = new Chart(document.getElementById('chartPerf'), { type:'bar', data: { labels: years, datasets:[{label:'Total Anual', data: years.map(y=>yearly[y]), backgroundColor:'#3498db', borderRadius: 6}] } });
     }
 
-    // --- PROCESSAR PORTEFÓLIO (NOVA LISTA COM BARRAS) ---
+    // --- PORTEFÓLIO ---
     document.getElementById('filePortfolio').addEventListener('change', function(e) {
-        Papa.parse(e.target.files[0], { header: true, complete: (res) => { processPortfolio(res.data); document.getElementById('cardPort').style.display = 'block'; }});
+        Papa.parse(e.target.files[0], { header: true, complete: (res) => { 
+            processPortfolio(res.data, true); 
+            document.getElementById('cardPort').style.display = 'block'; 
+        }});
     });
 
-    function processPortfolio(data) {
+    function processPortfolio(data, shouldSave) {
+        if(shouldSave) localStorage.setItem('degiro_port_data', JSON.stringify(data));
+
         let total = 0; const ativos = [];
         data.forEach(r => {
             const prod = r['Produto'], col = Object.keys(r), val = parseFloat((r[col[col.length-1]]||"0").replace('.','').replace(',','.'));
             if(prod && !prod.includes("CASH") && val > 0) { ativos.push({ nome: prod, valor: val }); total += val; }
         });
 
-        // Ordenar por valor
         ativos.sort((a, b) => b.valor - a.valor);
         document.getElementById('totalPortValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
 
-        // Gráfico Circular
         if(chartPort) chartPort.destroy();
         chartPort = new Chart(document.getElementById('chartPort'), {
             type: 'doughnut', data: { labels: ativos.map(a=>a.nome), datasets:[{data: ativos.map(a=>a.valor), backgroundColor: colors}]},
             options: { cutout:'80%', maintainAspectRatio:false, plugins:{legend:{display:false}}}
         });
 
-        // Gerar Lista com Barras de Percentagem (Conforme imagem)
-        const listContainer = document.getElementById('portfolioListContainer');
-        listContainer.innerHTML = ativos.map((a, i) => {
+        document.getElementById('portfolioListContainer').innerHTML = ativos.map((a, i) => {
             const pct = ((a.valor / total) * 100).toFixed(1);
-            const cor = colors[i % colors.length];
             return `
                 <div class="list-row">
-                    <div class="list-info">
-                        <span class="item-name">${a.nome}</span>
-                        <span class="item-val">${a.valor.toFixed(2)}€ (${pct}%)</span>
-                    </div>
-                    <div class="progress-bg">
-                        <div class="progress-fill" style="width: ${pct}%; background-color: ${cor}"></div>
-                    </div>
-                </div>
-            `;
+                    <div class="list-info"><span class="item-name">${a.nome}</span><span class="item-val">${a.valor.toFixed(2)}€ (${pct}%)</span></div>
+                    <div class="progress-bg"><div class="progress-fill" style="width: ${pct}%; background-color: ${colors[i % colors.length]}"></div></div>
+                </div>`;
         }).join('');
     }
 </script>
