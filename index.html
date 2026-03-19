@@ -7,199 +7,216 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --bg-color: #f0f2f5; --card-bg: #ffffff; --text-color: #333; --header-bg: #fff; --border: #eee; --input: #fff; }
-        [data-theme="dark"] { --bg-color: #121212; --card-bg: #1e1e1e; --text-color: #e0e0e0; --header-bg: #1e1e1e; --border: #333; --input: #2d2d2d; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1100px; margin: auto; }
+        .top-bar { display: flex; justify-content: space-between; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; flex-wrap: wrap; gap: 20px; }
+        .upload-box { flex: 1; min-width: 250px; }
+        .upload-box label { display: block; font-weight: bold; font-size: 0.85em; margin-bottom: 5px; color: #2ecc71; }
         
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-color); margin: 0; padding: 20px; color: var(--text-color); transition: 0.3s; }
-        .container { max-width: 1200px; margin: auto; }
-        
-        .top-bar { display: flex; justify-content: space-between; background: var(--header-bg); padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; align-items: center; border: 1px solid var(--border); }
-        .upload-box label { display: block; font-weight: bold; font-size: 0.75em; color: #2ecc71; margin-bottom: 5px; }
-
         .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        @media (max-width: 900px) { .dashboard-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 800px) { .dashboard-grid { grid-template-columns: 1fr; } }
         
-        .card { background: var(--card-bg); padding: 25px; border-radius: 12px; border: 1px solid var(--border); min-height: 550px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); position: relative; }
+        .card h2 { margin-top: 0; font-size: 1.2em; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
         
-        .allocation-menu { display: flex; justify-content: center; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; }
-        .alloc-btn { background: var(--input); border: 1px solid var(--border); color: var(--text-color); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75em; font-weight: bold; }
-        .alloc-btn.active { background: #2ecc71; color: white; border-color: #2ecc71; }
+        .filters { display: flex; gap: 10px; margin-bottom: 15px; }
+        select { padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-size: 0.85em; flex: 1; outline: none; }
+
+        /* Estilo da Lista de Transações (Baseado na imagem) */
+        .transaction-list { margin-top: 25px; border-top: 1px solid #eee; padding-top: 20px; }
+        .transaction-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f9f9f9; font-size: 0.9em; }
+        .transaction-item:last-child { border-bottom: none; }
+        .tx-info { display: flex; flex-direction: column; }
+        .tx-name { font-weight: bold; color: #2c3e50; }
+        .tx-date { font-size: 0.8em; color: #95a5a6; }
+        .tx-amount { font-weight: bold; color: #2ecc71; }
+
+        /* Botão Show More */
+        .show-more-btn { width: 100%; padding: 12px; margin-top: 15px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; color: #2ecc71; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .show-more-btn:hover { background: #2ecc71; color: white; }
 
         .donut-container { position: relative; height: 350px; width: 100%; }
-        .center-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
-        .center-text strong { font-size: 1.4em; color: var(--text-color); display: block; }
-        
+        .center-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; width: 100%; }
+        .center-text span { display: block; font-size: 0.75em; color: #666; font-weight: bold; }
+        .center-text strong { font-size: 1.4em; color: #333; }
         .total-display { font-size: 1.8em; font-weight: bold; color: #2ecc71; margin-bottom: 10px; }
-        .theme-btn { background: var(--input); border: 1px solid var(--border); color: var(--text-color); padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 0.8em; }
     </style>
 </head>
-<body data-theme="light">
+<body>
 
 <div class="container">
     <div class="top-bar">
-        <div class="upload-box"><label>1. ACCOUNT.CSV</label><input type="file" id="fileDiv" accept=".csv"></div>
-        <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙 Dark Mode</button>
-        <div class="upload-box" style="text-align: right;"><label>2. PORTFOLIO.CSV</label><input type="file" id="filePort" accept=".csv"></div>
+        <div class="upload-box">
+            <label>1. Dividendos (Account.csv)</label>
+            <input type="file" id="fileDividendos" accept=".csv">
+        </div>
+        <div class="upload-box" style="text-align: right;">
+            <label>2. Carteira (Portfolio.csv)</label>
+            <input type="file" id="filePortfolio" accept=".csv">
+        </div>
     </div>
 
     <div class="dashboard-grid">
         <div class="card" id="cardDiv" style="display:none;">
-            <h2>💰 Dividendos</h2>
-            <div class="total-display" id="totalDivVal">0.00€</div>
+            <h2>💰 Histórico de Dividendos</h2>
+            <div class="filters">
+                <select id="prodFilter"><option value="all">Todas as Ações</option></select>
+                <select id="yearFilter"><option value="all">Todos os Anos</option></select>
+            </div>
+            <div class="total-display" id="totalDivValue">0.00€</div>
             <canvas id="chartDiv"></canvas>
+
+            <div class="transaction-list">
+                <div id="txItemsContainer"></div>
+                <button class="show-more-btn" id="btnShowMore">SHOW MORE</button>
+            </div>
         </div>
 
         <div class="card" id="cardPort" style="display:none;">
-            <h2>📊 Allocation</h2>
-            <div class="allocation-menu">
-                <button class="alloc-btn active" onclick="changeAlloc('positions', this)">Positions</button>
-                <button class="alloc-btn" onclick="changeAlloc('type', this)">Type</button>
-                <button class="alloc-btn" onclick="changeAlloc('deepdive', this)">Deep Dive</button>
-                <button class="alloc-btn" onclick="changeAlloc('regions', this)">Regions</button>
-                <button class="alloc-btn" onclick="changeAlloc('sectors', this)">Sectors</button>
-            </div>
+            <h2>📊 Alocação da Carteira</h2>
             <div class="donut-container">
                 <canvas id="chartPort"></canvas>
-                <div class="center-text"><span style="font-size:0.7em;color:#888;">TOTAL</span><strong id="totalPortVal">0.00€</strong></div>
+                <div class="center-text">
+                    <span>VALOR TOTAL</span>
+                    <strong id="totalPortValue">0.00€</strong>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    let chartDiv, chartPort, rawDiv = [], portItems = [], cashTotal = 0;
-    let currentMode = 'positions';
+    let chartDiv, chartPort;
+    let rawDivData = [];
 
-    // Tabelas de classificação fornecidas por ti
-    const assetClassification = {
-        'IE00B5BMR087': 'ETF', 'IE00B3WJKG14': 'ETF', 'IE00BK5BQT80': 'ETF', 
-        'IE00B3XXRP09': 'ETF', 'IE00B8GKDB10': 'ETF', 'IE00BFZXGZ54': 'ETF',
-        'XS2183935274': 'Prata', 'IE00B43VDT70': 'Ouro'
-    };
-
-    function toggleTheme() {
-        const b = document.body;
-        const theme = b.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-        b.setAttribute('data-theme', theme);
-        document.getElementById('themeBtn').innerText = theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
-        if(chartDiv) updateDivs();
-        if(chartPort) changeAlloc(currentMode);
-    }
-
-    document.getElementById('filePort').addEventListener('change', e => {
-        Papa.parse(e.target.files[0], { header: true, skipEmptyLines: true, complete: r => {
-            portItems = []; cashTotal = 0;
-            r.data.forEach(row => {
-                const name = row['Produto'] || "";
-                const isin = row['Ticker / ISIN'] || "";
-                const cols = Object.keys(row);
-                const val = parseFloat((row[cols[cols.length-1]]||"0").replace(/\./g,'').replace(',','.'));
-                
-                if(name.toUpperCase().includes("CASH") || name.toUpperCase().includes("FTX")) {
-                    cashTotal += val;
-                } else if(val > 0) {
-                    // Identificar o tipo baseado no ISIN
-                    const type = assetClassification[isin.trim()] || 'Stocks';
-                    portItems.push({ name, isin, val, type });
-                }
-            });
-            document.getElementById('cardPort').style.display = 'block';
-            changeAlloc('positions', document.querySelector('.alloc-btn.active'));
-        }});
-    });
-
-    function changeAlloc(mode, btn) {
-        currentMode = mode;
-        if(btn) {
-            document.querySelectorAll('.alloc-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        }
-
-        let labels = [], data = [];
-        const grandTotal = portItems.reduce((a,b) => a + b.val, 0) + cashTotal;
-
-        if(mode === 'positions') {
-            labels = portItems.map(x => x.name);
-            data = portItems.map(x => x.val);
-        } 
-        else if(mode === 'type') {
-            const types = { 'Stocks': 0, 'ETF': 0, 'Ouro': 0, 'Prata': 0, 'Cash': cashTotal };
-            portItems.forEach(item => { types[item.type] += item.val; });
-            // Filtra apenas os tipos que têm valor > 0
-            labels = Object.keys(types).filter(t => types[t] > 0);
-            data = labels.map(l => types[l]);
-        } 
-        else if(mode === 'deepdive') {
-            const sorted = [...portItems].sort((a,b) => b.val - a.val);
-            labels = sorted.slice(0,5).map(x => x.name);
-            data = sorted.slice(0,5).map(x => x.val);
-            const others = sorted.slice(5).reduce((a,b) => a + b.val, 0);
-            if(others > 0) { labels.push("Outros"); data.push(others); }
-        } 
-        else if(mode === 'regions' || mode === 'sectors') {
-            const mapping = mode === 'regions' ? 
-                { 'US': ['ALPHABET', 'AMAZON', 'ABBVIE', 'ALLY', 'AT&T', 'PEPSICO', 'REALTY', 'RIGETTI', 'RITHM', 'STAG', 'VICI', 'MAIN', 'ALEXANDRIA', 'ADR ON PDD'], 'PT': ['NOS', 'NAVIGATOR'], 'EU': ['NOVO NORDISK'] } :
-                { 'Tech': ['ALPHABET', 'AMAZON', 'RIGETTI', 'ADR ON PDD'], 'Health': ['ABBVIE', 'NOVO NORDISK'], 'REITs': ['REALTY', 'STAG', 'VICI', 'ALEXANDRIA'], 'Finance': ['ALLY', 'RITHM', 'MAIN'], 'Others': ['PEPSICO', 'NOS', 'NAVIGATOR', 'AT&T'] };
-            
-            const grouped = {};
-            portItems.forEach(item => {
-                let found = false;
-                if(item.type !== 'Stocks') { 
-                    const key = item.type; grouped[key] = (grouped[key] || 0) + item.val; found = true;
-                } else {
-                    for(let key in mapping) {
-                        if(mapping[key].some(m => item.name.toUpperCase().includes(m))) {
-                            grouped[key] = (grouped[key] || 0) + item.val; found = true; break;
-                        }
-                    }
-                }
-                if(!found) grouped['Outros'] = (grouped['Outros'] || 0) + item.val;
-            });
-            labels = Object.keys(grouped); data = Object.values(grouped);
-        }
-
-        document.getElementById('totalPortVal').innerText = grandTotal.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
-        renderDonut(labels, data, grandTotal);
-    }
-
-    function renderDonut(labels, data, total) {
-        const ctx = document.getElementById('chartPort').getContext('2d');
-        if(chartPort) chartPort.destroy();
-        const isDark = document.body.getAttribute('data-theme') === 'dark';
-        chartPort = new Chart(ctx, {
-            type: 'doughnut',
-            data: { labels, datasets: [{ data, backgroundColor: ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c','#16a085','#f39c12','#d35400'], borderColor: isDark ? '#1e1e1e' : '#fff', borderWidth: 2 }] },
-            options: { cutout: '75%', maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw.toFixed(2)}€ (${((c.raw/total)*100).toFixed(1)}%)` } } } }
-        });
-    }
-
-    // --- DIVIDEND LOGIC ---
-    document.getElementById('fileDiv').addEventListener('change', e => {
-        Papa.parse(e.target.files[0], { header: true, skipEmptyLines: true, complete: r => {
-            rawDiv = r.data; updateDivs(); document.getElementById('cardDiv').style.display = 'block';
-        }});
-    });
-
-    function updateDivs() {
-        const monthly = {}; let total = 0;
-        rawDiv.forEach(r => {
-            if((r['Descrição']||"").toLowerCase() === "dividendo") {
-                const d = r['Data'] || "", mY = d.split('-')[1]+'/'+d.split('-')[2];
-                const rowValues = Object.values(r);
-                const valStr = rowValues.find(v => v && v.includes(',') && !isNaN(parseFloat(v.replace('.','').replace(',','.')))) || "0";
-                const v = parseFloat(valStr.replace(/\./g,'').replace(',','.'));
-                monthly[mY] = (monthly[mY]||0) + v; total += v;
+    // --- DIVIDENDOS ---
+    document.getElementById('fileDividendos').addEventListener('change', function(e) {
+        Papa.parse(e.target.files[0], {
+            header: true, skipEmptyLines: true,
+            complete: function(results) {
+                rawDivData = results.data;
+                setupDivFilters(results.data);
+                processDivs();
+                document.getElementById('cardDiv').style.display = 'block';
             }
         });
-        document.getElementById('totalDivVal').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
-        const labels = Object.keys(monthly).sort((a,b) => {
-            const [m1, y1] = a.split('/').map(Number), [m2, y2] = b.split('/').map(Number);
-            return new Date(y1, m1-1) - new Date(y2, m2-1);
+    });
+
+    document.getElementById('prodFilter').addEventListener('change', processDivs);
+    document.getElementById('yearFilter').addEventListener('change', processDivs);
+    
+    // O Botão SHOW MORE aguarda as tuas instruções na próxima interação
+    document.getElementById('btnShowMore').addEventListener('click', function() {
+        console.log("Botão clicado. Aguardando função do utilizador...");
+    });
+
+    function setupDivFilters(data) {
+        const pSel = document.getElementById('prodFilter'), ySel = document.getElementById('yearFilter');
+        const prods = new Set(), years = new Set();
+        data.forEach(r => {
+            if((r['Descrição']||"").toLowerCase().includes("dividendo")) {
+                if(r['Produto']) prods.add(r['Produto']);
+                if(r['Data']) years.add(r['Data'].split('-')[2]);
+            }
         });
+        pSel.innerHTML = '<option value="all">Todas as Ações</option>';
+        Array.from(prods).sort().forEach(p => pSel.add(new Option(p, p)));
+        ySel.innerHTML = '<option value="all">Todos os Anos</option>';
+        Array.from(years).sort((a,b)=>b-a).forEach(y => ySel.add(new Option(y, y)));
+    }
+
+    function processDivs() {
+        const monthly = {}, fProd = document.getElementById('prodFilter').value, fYear = document.getElementById('yearFilter').value;
+        let total = 0;
+        let filteredTxs = [];
+
+        rawDivData.forEach(r => {
+            if((r['Descrição']||"").toLowerCase() === "dividendo") {
+                const data = r['Data'] || "", ano = data.split('-')[2], mesAno = data.split('-')[1]+'/'+ano;
+                
+                if((fProd==='all'||r['Produto']===fProd) && (fYear==='all'||ano===fYear)) {
+                    const rowValues = Object.values(r);
+                    const valStr = rowValues.find(v => v && v.includes(',') && !isNaN(parseFloat(v.replace('.','').replace(',','.')))) || "0";
+                    const val = parseFloat(valStr.replace(/\./g,'').replace(',','.'));
+                    
+                    monthly[mesAno] = (monthly[mesAno] || 0) + val;
+                    total += val;
+
+                    filteredTxs.push({ data: data, produto: r['Produto'], valor: val });
+                }
+            }
+        });
+
+        // Ordenar transações da mais recente para a mais antiga
+        filteredTxs.sort((a,b) => {
+            const dateA = new Date(a.data.split('-').reverse().join('-'));
+            const dateB = new Date(b.data.split('-').reverse().join('-'));
+            return dateB - dateA;
+        });
+
+        renderTxList(filteredTxs);
+        updateDivChart(monthly, total);
+    }
+
+    function renderTxList(txs) {
+        const container = document.getElementById('txItemsContainer');
+        container.innerHTML = "";
+        // Mostrar apenas as primeiras 5 transações por defeito
+        txs.slice(0, 5).forEach(tx => {
+            const div = document.createElement('div');
+            div.className = 'transaction-item';
+            div.innerHTML = `
+                <div class="tx-info">
+                    <span class="tx-name">${tx.produto}</span>
+                    <span class="tx-date">${tx.data}</span>
+                </div>
+                <div class="tx-amount">+${tx.valor.toFixed(2)}€</div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function updateDivChart(monthly, total) {
+        const labels = Object.keys(monthly).sort((a,b) => new Date(a.split('/')[1], a.split('/')[0]-1) - new Date(b.split('/')[1], b.split('/')[0]-1));
+        document.getElementById('totalDivValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
         if(chartDiv) chartDiv.destroy();
         chartDiv = new Chart(document.getElementById('chartDiv'), {
-            type:'bar', data: { labels, datasets: [{label:'€', data: labels.map(l=>monthly[l].toFixed(2)), backgroundColor:'#2ecc71'}] },
-            options: { scales: { y: { ticks: { color: document.body.getAttribute('data-theme') === 'dark' ? '#eee' : '#666' } }, x: { ticks: { color: document.body.getAttribute('data-theme') === 'dark' ? '#eee' : '#666' } } } }
+            type:'bar', data: { labels, datasets:[{label:'€', data: labels.map(l=>monthly[l].toFixed(2)), backgroundColor:'#2ecc71', borderRadius: 4}] }
+        });
+    }
+
+    // --- CARTEIRA ---
+    document.getElementById('filePortfolio').addEventListener('change', function(e) {
+        Papa.parse(e.target.files[0], {
+            header: true, skipEmptyLines: true,
+            complete: function(results) {
+                processPortfolio(results.data);
+                document.getElementById('cardPort').style.display = 'block';
+            }
+        });
+    });
+
+    function processPortfolio(data) {
+        let total = 0; const ativos = {};
+        data.forEach(r => {
+            const prod = r['Produto'];
+            if (prod && !prod.includes("CASH") && !prod.includes("CURRENCY")) {
+                const colunas = Object.keys(r);
+                const ultimaColuna = colunas[colunas.length - 1];
+                const valStr = r[ultimaColuna] || "0";
+                const val = parseFloat(valStr.replace(/\./g,'').replace(',','.'));
+                if(!isNaN(val) && val > 0) { ativos[prod] = (ativos[prod]||0) + val; total += val; }
+            }
+        });
+        document.getElementById('totalPortValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+        if(chartPort) chartPort.destroy();
+        chartPort = new Chart(document.getElementById('chartPort'), {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(ativos),
+                datasets: [{ data: Object.values(ativos), backgroundColor: ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c'] }]
+            },
+            options: { cutout:'75%', maintainAspectRatio: false, plugins:{ legend:{display:false} } }
         });
     }
 </script>
