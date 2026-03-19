@@ -9,24 +9,37 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 1100px; margin: auto; }
-        .top-bar { display: flex; justify-content: space-between; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; flex-wrap: wrap; gap: 20px; }
-        .upload-box { flex: 1; min-width: 250px; }
-        .upload-box label { display: block; font-weight: bold; font-size: 0.85em; margin-bottom: 5px; color: #2ecc71; }
+        
+        /* Barra de Topo com Botão Limpar */
+        .top-bar { display: flex; justify-content: space-between; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; flex-wrap: wrap; gap: 20px; align-items: flex-end; }
+        .upload-box { flex: 1; min-width: 200px; }
+        .upload-box label { display: block; font-weight: bold; font-size: 0.8em; margin-bottom: 8px; color: #2ecc71; text-transform: uppercase; }
+        
+        .clear-btn { background: #ff4757; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.8em; transition: 0.3s; height: fit-content; }
+        .clear-btn:hover { background: #ff6b81; }
+
         .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         @media (max-width: 800px) { .dashboard-grid { grid-template-columns: 1fr; } }
+        
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); position: relative; }
         .card h2 { margin-top: 0; font-size: 1.1em; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; color: #666; text-transform: uppercase; }
+        
         .item-list { margin-top: 20px; }
         .list-row { display: flex; flex-direction: column; padding: 12px 0; border-bottom: 1px solid #f8f9fa; }
         .list-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9em; }
         .item-name { font-weight: bold; }
         .item-val { font-weight: bold; color: #2ecc71; }
+        
         .progress-bg { background: #eee; height: 6px; border-radius: 10px; width: 100%; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 10px; transition: width 1s ease-in-out; }
+
         .show-more-btn { width: 100%; padding: 12px; margin-top: 15px; background: #f8f9fa; border: 1px solid #eee; border-radius: 8px; color: #2ecc71; font-weight: bold; cursor: pointer; }
+
+        /* MODAL */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); }
         .modal-content { background: white; margin: 5% auto; padding: 30px; width: 80%; max-width: 800px; border-radius: 15px; position: relative; }
         .close-modal { position: absolute; right: 20px; top: 20px; font-size: 24px; cursor: pointer; color: #999; }
+
         .total-display { font-size: 2em; font-weight: bold; color: #2ecc71; margin-bottom: 15px; }
     </style>
 </head>
@@ -34,25 +47,32 @@
 
 <div class="container">
     <div class="top-bar">
-        <div class="upload-box"><label>DIVIDENDOS (Account.csv)</label><input type="file" id="fileDividendos"></div>
-        <div class="upload-box" style="text-align: right;"><label>PORTEFÓLIO (Portfolio.csv)</label><input type="file" id="filePortfolio"></div>
+        <div class="upload-box">
+            <label>Dividendos (Account.csv)</label>
+            <input type="file" id="fileDividendos">
+        </div>
+        <div class="upload-box">
+            <label>Portefólio (Portfolio.csv)</label>
+            <input type="file" id="filePortfolio">
+        </div>
+        <button class="clear-btn" onclick="clearData()">LIMPAR DADOS</button>
     </div>
 
     <div class="dashboard-grid">
         <div class="card" id="cardDiv" style="display:none;">
-            <h2>Dividendos Recebidos</h2>
+            <h2>Dividendos</h2>
             <div id="totalDivValue" class="total-display">0.00€</div>
             <canvas id="chartDiv" style="max-height: 200px;"></canvas>
             <div id="txItemsContainer" class="item-list"></div>
-            <button class="show-more-btn" id="btnOpenModal">PERFORMANCE POR ANO</button>
+            <button class="show-more-btn" id="btnOpenModal">VER PERFORMANCE ANUAL</button>
         </div>
 
         <div class="card" id="cardPort" style="display:none;">
-            <h2>Alocação de Ativos</h2>
+            <h2>Alocação</h2>
             <div style="position: relative; height: 250px; margin-bottom: 30px;">
                 <canvas id="chartPort"></canvas>
                 <div style="position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center;">
-                    <span style="font-size: 0.75em; color: #999;">TOTAL</span><br>
+                    <span style="font-size: 0.75em; color: #999;">VALOR TOTAL</span><br>
                     <strong id="totalPortValue" style="font-size: 1.3em;">0.00€</strong>
                 </div>
             </div>
@@ -64,7 +84,7 @@
 <div id="perfModal" class="modal">
     <div class="modal-content">
         <span class="close-modal" id="btnCloseModal">&times;</span>
-        <h2 style="margin-top:0">Evolução Anual</h2>
+        <h2 style="margin-top:0">Evolução por Ano</h2>
         <canvas id="chartPerf" style="max-height: 300px; margin-bottom: 20px;"></canvas>
     </div>
 </div>
@@ -73,103 +93,79 @@
     let chartDiv, chartPort, chartPerf, rawDivData = [];
     const colors = ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c','#16a085','#27ae60','#2980b9'];
 
-    // AO CARREGAR A PÁGINA: Verificar se há dados salvos
+    // CARREGAR DADOS AO ABRIR
     window.onload = () => {
-        const savedDivs = localStorage.getItem('degiro_div_data');
-        const savedPort = localStorage.getItem('degiro_port_data');
-
-        if (savedDivs) {
-            rawDivData = JSON.parse(savedDivs);
-            processDivs(false); // false para não salvar novamente o que já veio do cache
-            document.getElementById('cardDiv').style.display = 'block';
-        }
-
-        if (savedPort) {
-            processPortfolio(JSON.parse(savedPort), false);
-            document.getElementById('cardPort').style.display = 'block';
-        }
+        const d = localStorage.getItem('degiro_divs');
+        const p = localStorage.getItem('degiro_port');
+        if(d) { rawDivData = JSON.parse(d); processDivs(false); document.getElementById('cardDiv').style.display = 'block'; }
+        if(p) { processPortfolio(JSON.parse(p), false); document.getElementById('cardPort').style.display = 'block'; }
     };
+
+    function clearData() {
+        if(confirm("Deseja apagar os dados guardados no browser?")) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
 
     document.getElementById('btnOpenModal').onclick = () => document.getElementById('perfModal').style.display = 'block';
     document.getElementById('btnCloseModal').onclick = () => document.getElementById('perfModal').style.display = 'none';
 
-    // --- DIVIDENDOS ---
-    document.getElementById('fileDividendos').addEventListener('change', function(e) {
-        Papa.parse(e.target.files[0], { header: true, complete: (res) => { 
-            rawDivData = res.data;
-            processDivs(true); // true para guardar no LocalStorage
-            document.getElementById('cardDiv').style.display = 'block'; 
+    // LOGICA DIVIDENDOS
+    document.getElementById('fileDividendos').onchange = (e) => {
+        Papa.parse(e.target.files[0], { header: true, complete: (res) => {
+            rawDivData = res.data; processDivs(true);
+            document.getElementById('cardDiv').style.display = 'block';
         }});
-    });
+    };
 
-    function processDivs(shouldSave) {
-        if(shouldSave) localStorage.setItem('degiro_div_data', JSON.stringify(rawDivData));
-        
-        const monthly = {}, yearly = {};
-        let total = 0, txs = [];
+    function processDivs(save) {
+        if(save) localStorage.setItem('degiro_divs', JSON.stringify(rawDivData));
+        const m = {}, y = {}; let t = 0, txs = [];
         rawDivData.forEach(r => {
             if((r['Descrição']||"").toLowerCase().includes("dividendo") && !r['Descrição'].toLowerCase().includes("imposto")) {
-                const data = r['Data'] || "", ano = data.split('-')[2], mesAno = data.split('-')[1]+'/'+ano;
-                const val = parseFloat(Object.values(r).find(v => v?.includes(',') && !isNaN(parseFloat(v.replace('.','').replace(',','.'))))?.replace('.','').replace(',','.') || 0);
-                monthly[mesAno] = (monthly[mesAno] || 0) + val;
-                yearly[ano] = (yearly[ano] || 0) + val;
-                total += val;
-                txs.push({ data, produto: r['Produto'], valor: val });
+                const d = r['Data'] || "", ano = d.split('-')[2], ma = d.split('-')[1]+'/'+ano;
+                const v = parseFloat(Object.values(r).find(val => val?.includes(',') && !isNaN(parseFloat(val.replace('.','').replace(',','.'))))?.replace('.','').replace(',','.') || 0);
+                m[ma] = (m[ma] || 0) + v; y[ano] = (y[ano] || 0) + v; t += v;
+                txs.push({ d, p: r['Produto'], v });
             }
         });
-        updateDivDashboard(monthly, total, txs, yearly);
-    }
-
-    function updateDivDashboard(monthly, total, txs, yearly) {
-        const labels = Object.keys(monthly).sort((a,b) => new Date(a.split('/')[1], a.split('/')[0]-1) - new Date(b.split('/')[1], b.split('/')[0]-1));
-        document.getElementById('totalDivValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+        document.getElementById('totalDivValue').innerText = t.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+        const labs = Object.keys(m).sort((a,b) => new Date(a.split('/')[1], a.split('/')[0]-1) - new Date(b.split('/')[1], b.split('/')[0]-1));
         if(chartDiv) chartDiv.destroy();
-        chartDiv = new Chart(document.getElementById('chartDiv'), { type:'bar', data: { labels, datasets:[{label:'€', data: labels.map(l=>monthly[l].toFixed(2)), backgroundColor:'#2ecc71', borderRadius: 4}] } });
-        
-        document.getElementById('txItemsContainer').innerHTML = txs.sort((a,b)=>new Date(b.data.split('-').reverse().join('-'))-new Date(a.data.split('-').reverse().join('-'))).slice(0,4).map(t => `
-            <div class="list-row"><div class="list-info"><span class="item-name">${t.produto}</span><span class="item-val">+${t.valor.toFixed(2)}€</span></div><div style="font-size:0.75em; color:#999">${t.data}</div></div>`).join('');
-        renderPerformance(yearly);
-    }
-
-    function renderPerformance(yearly) {
-        const years = Object.keys(yearly).sort();
+        chartDiv = new Chart(document.getElementById('chartDiv'), { type:'bar', data: { labels: labs, datasets:[{label:'€', data: labs.map(l=>m[l].toFixed(2)), backgroundColor:'#2ecc71', borderRadius: 4}] } });
+        document.getElementById('txItemsContainer').innerHTML = txs.sort((a,b)=>new Date(b.d.split('-').reverse().join('-'))-new Date(a.d.split('-').reverse().join('-'))).slice(0,4).map(x => `
+            <div class="list-row"><div class="list-info"><span class="item-name">${x.p}</span><span class="item-val">+${x.v.toFixed(2)}€</span></div><div style="font-size:0.75em; color:#999">${x.d}</div></div>`).join('');
+        const yrs = Object.keys(y).sort();
         if(chartPerf) chartPerf.destroy();
-        chartPerf = new Chart(document.getElementById('chartPerf'), { type:'bar', data: { labels: years, datasets:[{label:'Total Anual', data: years.map(y=>yearly[y]), backgroundColor:'#3498db', borderRadius: 6}] } });
+        chartPerf = new Chart(document.getElementById('chartPerf'), { type:'bar', data: { labels: yrs, datasets:[{label:'Total Anual', data: yrs.map(x=>y[x]), backgroundColor:'#3498db', borderRadius: 6}] } });
     }
 
-    // --- PORTEFÓLIO ---
-    document.getElementById('filePortfolio').addEventListener('change', function(e) {
-        Papa.parse(e.target.files[0], { header: true, complete: (res) => { 
-            processPortfolio(res.data, true); 
-            document.getElementById('cardPort').style.display = 'block'; 
+    // LOGICA PORTEFÓLIO
+    document.getElementById('filePortfolio').onchange = (e) => {
+        Papa.parse(e.target.files[0], { header: true, complete: (res) => {
+            processPortfolio(res.data, true);
+            document.getElementById('cardPort').style.display = 'block';
         }});
-    });
+    };
 
-    function processPortfolio(data, shouldSave) {
-        if(shouldSave) localStorage.setItem('degiro_port_data', JSON.stringify(data));
-
-        let total = 0; const ativos = [];
+    function processPortfolio(data, save) {
+        if(save) localStorage.setItem('degiro_port', JSON.stringify(data));
+        let t = 0; const a = [];
         data.forEach(r => {
-            const prod = r['Produto'], col = Object.keys(r), val = parseFloat((r[col[col.length-1]]||"0").replace('.','').replace(',','.'));
-            if(prod && !prod.includes("CASH") && val > 0) { ativos.push({ nome: prod, valor: val }); total += val; }
+            const p = r['Produto'], col = Object.keys(r), v = parseFloat((r[col[col.length-1]]||"0").replace('.','').replace(',','.'));
+            if(p && !p.includes("CASH") && v > 0) { a.push({ n: p, v }); t += v; }
         });
-
-        ativos.sort((a, b) => b.valor - a.valor);
-        document.getElementById('totalPortValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
-
+        a.sort((x, y) => y.v - x.v);
+        document.getElementById('totalPortValue').innerText = t.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
         if(chartPort) chartPort.destroy();
         chartPort = new Chart(document.getElementById('chartPort'), {
-            type: 'doughnut', data: { labels: ativos.map(a=>a.nome), datasets:[{data: ativos.map(a=>a.valor), backgroundColor: colors}]},
+            type: 'doughnut', data: { labels: a.map(x=>x.n), datasets:[{data: a.map(x=>x.v), backgroundColor: colors}]},
             options: { cutout:'80%', maintainAspectRatio:false, plugins:{legend:{display:false}}}
         });
-
-        document.getElementById('portfolioListContainer').innerHTML = ativos.map((a, i) => {
-            const pct = ((a.valor / total) * 100).toFixed(1);
-            return `
-                <div class="list-row">
-                    <div class="list-info"><span class="item-name">${a.nome}</span><span class="item-val">${a.valor.toFixed(2)}€ (${pct}%)</span></div>
-                    <div class="progress-bg"><div class="progress-fill" style="width: ${pct}%; background-color: ${colors[i % colors.length]}"></div></div>
-                </div>`;
+        document.getElementById('portfolioListContainer').innerHTML = a.map((x, i) => {
+            const pct = ((x.v / t) * 100).toFixed(1);
+            return `<div class="list-row"><div class="list-info"><span class="item-name">${x.n}</span><span class="item-val">${x.v.toFixed(2)}€ (${pct}%)</span></div><div class="progress-bg"><div class="progress-fill" style="width: ${pct}%; background-color: ${colors[i % colors.length]}"></div></div></div>`;
         }).join('');
     }
 </script>
