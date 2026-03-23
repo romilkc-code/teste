@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor de Ativos Pro</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --danger: #e74c3c;
+            --success: #27ae60;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f0f2f5;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        input:focus { border-color: var(--accent); }
+
+        button {
+            padding: 12px 25px;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button:hover { background-color: #2980b9; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background-color: var(--primary);
+            color: white;
+            padding: 15px;
+            text-align: left;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .negativo { color: var(--danger); font-weight: bold; }
+        .positivo { color: var(--success); font-weight: bold; }
+        
+        .badge {
+            background: #eee;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="color: var(--primary);">Analisador de Máximas (52 Semanas)</h2>
+    
+    <div class="search-box">
+        <input type="text" id="tickerInput" placeholder="Ex: PETR4, VALE3, AAPL...">
+        <button onclick="buscarAtivo()">Adicionar Ativo</button>
+    </div>
+
+    <table id="tabela-acoes">
+        <thead>
+            <tr>
+                <th>Ticker</th>
+                <th>Preço Atual</th>
+                <th>Máx. 52 Semanas</th>
+                <th>Variação vs Máxima</th>
+            </tr>
+        </thead>
+        <tbody id="corpo-tabela">
+            </tbody>
+    </table>
+</div>
+
+<script>
+    const API_KEY = "SUA_CHAVE_AQUI"; // Substitua pela sua chave da brapi.dev
+
+    async function buscarAtivo() {
+        const input = document.getElementById("tickerInput");
+        const ticker = input.value.toUpperCase().trim();
+        const corpoTabela = document.getElementById("corpo-tabela");
+
+        if (!ticker) return alert("Digite um ticker válido!");
+
+        try {
+            const url = `https://brapi.dev/api/quote/${ticker}?token=${API_KEY}`;
+            const resposta = await fetch(url);
+            const dados = await resposta.json();
+
+            if (!dados.results || dados.results.length === 0) {
+                throw new Error("Ativo não encontrado");
+            }
+
+            const ativo = dados.results[0];
+            const atual = ativo.regularMarketPrice;
+            const maxima = ativo.fiftyTwoWeekHigh;
+            
+            // Cálculo da Variação Percentual
+            const variacao = ((atual - maxima) / maxima) * 100;
+            const classeCor = variacao < 0 ? "negativo" : "positivo";
+
+            // Criar nova linha
+            const novaLinha = document.createElement("tr");
+            novaLinha.innerHTML = `
+                <td><span class="badge">${ativo.symbol}</span></td>
+                <td>R$ ${atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                <td>R$ ${maxima.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                <td class="${classeCor}">${variacao.toFixed(2)}%</td>
+            `;
+
+            // Adiciona no topo da tabela
+            corpoTabela.insertBefore(novaLinha, corpoTabela.firstChild);
+            
+            // Limpa o input
+            input.value = "";
+
+        } catch (erro) {
+            alert("Erro: Ativo não encontrado ou limite da API atingido.");
+            console.error(erro);
+        }
+    }
+
+    // Permitir busca ao apertar "Enter"
+    document.getElementById("tickerInput").addEventListener("keypress", function(e) {
+        if (e.key === "Enter") buscarAtivo();
+    });
+</script>
+
+</body>
+</html>
