@@ -7,87 +7,103 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f7f9; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1100px; margin: auto; }
+        :root { --primary: #2ecc71; --dark: #2c3e50; --bg: #f4f7f9; --sidebar-w: 240px; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
-        .top-bar { display: flex; justify-content: space-between; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; flex-wrap: wrap; gap: 20px; align-items: flex-end; }
-        .upload-box { flex: 1; min-width: 200px; }
-        .upload-box label { display: block; font-weight: bold; font-size: 0.75em; margin-bottom: 8px; color: #2ecc71; text-transform: uppercase; }
-        
-        .clear-btn { background: #ff4757; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.75em; }
+        /* SIDEBAR */
+        .sidebar { width: var(--sidebar-w); background: white; border-right: 1px solid #e1e8ed; display: flex; flex-direction: column; padding: 20px 0; z-index: 10; }
+        .sidebar-logo { padding: 0 25px 30px; font-weight: 800; font-size: 1.2em; color: var(--dark); border-bottom: 1px solid #f0f0f0; margin-bottom: 20px; }
+        .nav-btn { padding: 15px 25px; cursor: pointer; border: none; background: none; text-align: left; font-size: 0.95em; font-weight: 600; color: #7f8c8d; transition: 0.2s; display: flex; align-items: center; gap: 12px; }
+        .nav-btn:hover { background: #f8f9fa; color: var(--primary); }
+        .nav-btn.active { background: #eafaf1; color: var(--primary); border-right: 4px solid var(--primary); }
+        .clear-nav { margin-top: auto; color: #e74c3c; padding: 15px 25px; font-weight: bold; cursor: pointer; font-size: 0.85em; border: none; background: none; }
 
-        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        @media (max-width: 800px) { .dashboard-grid { grid-template-columns: 1fr; } }
-        
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; }
-        .card h2 { margin-top: 0; font-size: 1em; border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 20px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; }
-        
-        /* Lista de Itens */
-        .item-list { margin-top: 25px; }
-        .list-row { display: flex; flex-direction: column; padding: 12px 0; border-bottom: 1px solid #fcfcfc; }
-        .list-info { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.9em; }
-        .item-name { font-weight: 600; color: #2c3e50; }
-        .item-val { font-weight: bold; color: #27ae60; }
-        
-        .progress-bg { background: #edf2f7; height: 8px; border-radius: 10px; width: 100%; }
-        .progress-fill { height: 100%; border-radius: 10px; transition: width 0.8s ease; }
+        /* MAIN CONTENT */
+        .main-content { flex: 1; overflow-y: auto; padding: 30px; }
+        .tab-content { display: none; max-width: 900px; margin: auto; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
 
-        .total-display { font-size: 2.2em; font-weight: 800; color: #2c3e50; margin-bottom: 15px; }
+        .top-upload-bar { display: flex; gap: 15px; background: white; padding: 15px 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); align-items: center; }
+        .upload-field { flex: 1; }
+        .upload-field label { font-size: 0.7em; font-weight: 800; color: #bdc3c7; display: block; margin-bottom: 5px; }
+        
+        .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .total-display { font-size: 2.5em; font-weight: 800; color: var(--dark); margin-bottom: 10px; }
+        
+        /* Estilos dos Ativos/Lista */
+        .item-list { margin-top: 30px; }
+        .list-row { padding: 15px 0; border-bottom: 1px solid #f8f9fa; }
+        .list-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95em; font-weight: 600; }
+        .progress-bg { background: #edf2f7; height: 8px; border-radius: 10px; }
+        .progress-fill { height: 100%; border-radius: 10px; transition: width 0.8s; }
 
-        /* Estilo do Centro do Gráfico */
-        .chart-container { position: relative; height: 280px; margin-bottom: 20px; }
-        .chart-center-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
-        .chart-center-label span { display: block; font-size: 0.7em; color: #95a5a6; font-weight: bold; text-transform: uppercase; }
-        .chart-center-label strong { font-size: 1.2em; color: #2c3e50; display: block; margin-top: 2px; }
+        .chart-box { position: relative; height: 320px; margin: 20px 0; }
+        .chart-center { position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none; }
+        .chart-center span { font-size: 0.75em; color: #95a5a6; font-weight: bold; }
 
-        .show-more-btn { width: 100%; padding: 12px; margin-top: 15px; background: #f8f9fa; border: 1px solid #eee; border-radius: 8px; color: #2ecc71; font-weight: bold; cursor: pointer; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="top-bar">
-        <div class="upload-box"><label>Dividendos</label><input type="file" id="fileDividendos"></div>
-        <div class="upload-box"><label>Portefólio</label><input type="file" id="filePortfolio"></div>
-        <button class="clear-btn" onclick="clearData()">LIMPAR</button>
+    <div class="sidebar">
+        <div class="sidebar-logo">DEGIRO Insights</div>
+        <button class="nav-btn active" onclick="switchTab('tab-div', this)">💰 Dividendos</button>
+        <button class="nav-btn" onclick="switchTab('tab-port', this)">📊 Portefólio</button>
+        <button class="clear-nav" onclick="clearData()">Limpar Tudo</button>
     </div>
 
-    <div class="dashboard-grid">
-        <div class="card" id="cardDiv" style="display:none;">
-            <h2>Dividendos Totais</h2>
-            <div id="totalDivValue" class="total-display">0.00€</div>
-            <canvas id="chartDiv" style="max-height: 200px;"></canvas>
-            <div id="txItemsContainer" class="item-list"></div>
+    <div class="main-content">
+        <div class="top-upload-bar">
+            <div class="upload-field"><label>CONTA (Account.csv)</label><input type="file" id="fileDividendos"></div>
+            <div class="upload-field"><label>CARTEIRA (Portfolio.csv)</label><input type="file" id="filePortfolio"></div>
         </div>
 
-        <div class="card" id="cardPort" style="display:none;">
-            <h2>Alocação de Carteira</h2>
-            <div class="chart-container">
-                <canvas id="chartPort"></canvas>
-                <div class="chart-center-label">
-                    <span>Total Investido</span>
-                    <strong id="totalPortValue">0.00€</strong>
-                </div>
+        <div id="tab-div" class="tab-content active">
+            <div class="card">
+                <h2>Dividendos Recebidos</h2>
+                <div id="totalDivValue" class="total-display">0.00€</div>
+                <canvas id="chartDiv" style="max-height: 250px;"></canvas>
+                <div id="txItemsContainer" class="item-list"></div>
             </div>
-            <div id="portfolioListContainer" class="item-list"></div>
+        </div>
+
+        <div id="tab-port" class="tab-content">
+            <div class="card">
+                <h2>Alocação de Ativos</h2>
+                <div class="chart-box">
+                    <canvas id="chartPort"></canvas>
+                    <div class="chart-center">
+                        <span>VALOR TOTAL</span>
+                        <strong id="totalPortValue" style="font-size: 1.4em; display:block;">0.00€</strong>
+                    </div>
+                </div>
+                <div id="portfolioListContainer" class="item-list"></div>
+            </div>
         </div>
     </div>
-</div>
 
 <script>
     let chartDiv, chartPort, rawDivData = [];
-    const colors = ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c','#2c3e50','#d35400','#7f8c8d'];
+    const colors = ['#2ecc71','#3498db','#9b59b6','#f1c40f','#e67e22','#e74c3c','#1abc9c','#2c3e50'];
+
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btn.classList.add('active');
+    }
 
     window.onload = () => {
         const d = localStorage.getItem('degiro_divs'), p = localStorage.getItem('degiro_port');
-        if(d) { rawDivData = JSON.parse(d); processDivs(false); document.getElementById('cardDiv').style.display = 'block'; }
-        if(p) { processPortfolio(JSON.parse(p), false); document.getElementById('cardPort').style.display = 'block'; }
+        if(d) { rawDivData = JSON.parse(d); processDivs(false); }
+        if(p) { processPortfolio(JSON.parse(p), false); }
     };
 
-    function clearData() { if(confirm("Limpar dados?")) { localStorage.clear(); location.reload(); } }
+    function clearData() { if(confirm("Apagar todos os dados guardados?")) { localStorage.clear(); location.reload(); } }
 
     document.getElementById('fileDividendos').onchange = (e) => {
-        Papa.parse(e.target.files[0], { header: true, complete: (res) => { rawDivData = res.data; processDivs(true); document.getElementById('cardDiv').style.display = 'block'; }});
+        Papa.parse(e.target.files[0], { header: true, complete: (res) => { rawDivData = res.data; processDivs(true); }});
     };
 
     function processDivs(save) {
@@ -103,13 +119,13 @@
         document.getElementById('totalDivValue').innerText = t.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
         const labs = Object.keys(m).sort((a,b) => new Date(a.split('/')[1], a.split('/')[0]-1) - new Date(b.split('/')[1], b.split('/')[0]-1));
         if(chartDiv) chartDiv.destroy();
-        chartDiv = new Chart(document.getElementById('chartDiv'), { type:'bar', data: { labels: labs, datasets:[{label:'€', data: labs.map(l=>m[l].toFixed(2)), backgroundColor:'#2ecc71', borderRadius: 4}] } });
-        document.getElementById('txItemsContainer').innerHTML = txs.sort((a,b)=>new Date(b.d.split('-').reverse().join('-'))-new Date(a.d.split('-').reverse().join('-'))).slice(0,4).map(x => `
-            <div class="list-row"><div class="list-info"><span class="item-name">${x.p}</span><span class="item-val">+${x.v.toFixed(2)}€</span></div><div style="font-size:0.75em; color:#999">${x.d}</div></div>`).join('');
+        chartDiv = new Chart(document.getElementById('chartDiv'), { type:'bar', data: { labels: labs, datasets:[{label:'€', data: labs.map(l=>m[l].toFixed(2)), backgroundColor:'#2ecc71', borderRadius: 5}] } });
+        document.getElementById('txItemsContainer').innerHTML = txs.sort((a,b)=>new Date(b.d.split('-').reverse().join('-'))-new Date(a.d.split('-').reverse().join('-'))).slice(0,5).map(x => `
+            <div class="list-row"><div class="list-info"><span>${x.p}</span><span style="color:#2ecc71">+${x.v.toFixed(2)}€</span></div><div style="font-size:0.75em; color:#999">${x.d}</div></div>`).join('');
     }
 
     document.getElementById('filePortfolio').onchange = (e) => {
-        Papa.parse(e.target.files[0], { header: true, complete: (res) => { processPortfolio(res.data, true); document.getElementById('cardPort').style.display = 'block'; }});
+        Papa.parse(e.target.files[0], { header: true, complete: (res) => { processPortfolio(res.data, true); }});
     };
 
     function processPortfolio(data, save) {
@@ -124,36 +140,14 @@
 
         if(chartPort) chartPort.destroy();
         chartPort = new Chart(document.getElementById('chartPort'), {
-            type: 'doughnut',
-            data: { labels: a.map(x=>x.n), datasets:[{ data: a.map(x=>x.v), backgroundColor: colors, hoverOffset: 10 }]},
-            options: {
-                cutout: '82%',
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                        titleColor: '#2c3e50',
-                        bodyColor: '#2c3e50',
-                        borderColor: '#eee',
-                        borderWidth: 1,
-                        padding: 12,
-                        displayColors: true,
-                        callbacks: {
-                            label: (context) => {
-                                const val = context.raw;
-                                const pct = ((val / total) * 100).toFixed(2);
-                                return ` Valor: ${val.toFixed(2)}€ (${pct}%)`;
-                            }
-                        }
-                    }
-                }
-            }
+            type: 'doughnut', data: { labels: a.map(x=>x.n), datasets:[{ data: a.map(x=>x.v), backgroundColor: colors, hoverOffset: 8 }]},
+            options: { cutout: '82%', maintainAspectRatio: false, plugins: { legend: { display: false }, 
+                tooltip: { backgroundColor:'white', titleColor:'#2c3e50', bodyColor:'#2c3e50', borderColor:'#ddd', borderWidth:1, callbacks: { label: (c) => ` ${c.raw.toFixed(2)}€ (${((c.raw/total)*100).toFixed(1)}%)`} } } }
         });
 
         document.getElementById('portfolioListContainer').innerHTML = a.map((x, i) => {
             const pct = ((x.v / total) * 100).toFixed(1);
-            return `<div class="list-row"><div class="list-info"><span class="item-name">${x.n}</span><span class="item-val">${x.v.toFixed(2)}€ (${pct}%)</span></div><div class="progress-bg"><div class="progress-fill" style="width: ${pct}%; background-color: ${colors[i % colors.length]}"></div></div></div>`;
+            return `<div class="list-row"><div class="list-info"><span>${x.n}</span><span>${x.v.toFixed(2)}€ (${pct}%)</span></div><div class="progress-bg"><div class="progress-fill" style="width: ${pct}%; background-color: ${colors[i % colors.length]}"></div></div></div>`;
         }).join('');
     }
 </script>
