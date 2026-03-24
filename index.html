@@ -18,30 +18,33 @@
         .nav-btn.active { background: #eafaf1; color: var(--primary); border-right: 4px solid var(--primary); }
         .clear-nav { margin-top: auto; color: #e74c3c; padding: 15px 25px; font-weight: bold; cursor: pointer; font-size: 0.85em; border: none; background: none; }
 
-        /* MAIN CONTENT */
+        /* MAIN */
         .main-content { flex: 1; overflow-y: auto; padding: 30px; }
         .tab-content { display: none; max-width: 900px; margin: auto; }
         .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
-
+        
         .top-upload-bar { display: flex; gap: 15px; background: white; padding: 15px 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); align-items: center; }
         .upload-field { flex: 1; }
         .upload-field label { font-size: 0.7em; font-weight: 800; color: #bdc3c7; display: block; margin-bottom: 5px; }
-        
-        .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        .total-display { font-size: 2.5em; font-weight: 800; color: var(--dark); margin-bottom: 10px; }
-        
-        /* Estilos dos Ativos/Lista */
-        .item-list { margin-top: 30px; }
-        .list-row { padding: 15px 0; border-bottom: 1px solid #f8f9fa; }
-        .list-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95em; font-weight: 600; }
-        .progress-bg { background: #edf2f7; height: 8px; border-radius: 10px; }
-        .progress-fill { height: 100%; border-radius: 10px; transition: width 0.8s; }
 
-        .chart-box { position: relative; height: 320px; margin: 20px 0; }
+        .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .total-display { font-size: 2.5em; font-weight: 800; color: var(--dark); margin-bottom: 15px; }
+        
+        /* LISTA DE DIVIDENDOS AGRUPADA */
+        .ticker-group { border-bottom: 1px solid #f0f2f5; cursor: pointer; transition: background 0.2s; border-radius: 8px; margin-bottom: 5px; }
+        .ticker-group:hover { background: #f8fbf9; }
+        .ticker-header { display: flex; justify-content: space-between; padding: 15px; font-weight: 600; align-items: center; }
+        .ticker-name { color: var(--dark); font-size: 1em; }
+        .ticker-total { color: var(--primary); font-weight: 800; }
+        
+        .ticker-details { display: none; background: #fafafa; padding: 10px 15px; border-radius: 0 0 8px 8px; font-size: 0.85em; }
+        .ticker-group.open .ticker-details { display: block; border-top: 1px dashed #eee; }
+        .detail-row { display: flex; justify-content: space-between; padding: 6px 0; color: #666; }
+
+        .chart-box { position: relative; height: 300px; margin-bottom: 30px; }
         .chart-center { position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none; }
-        .chart-center span { font-size: 0.75em; color: #95a5a6; font-weight: bold; }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -50,7 +53,7 @@
         <div class="sidebar-logo">DEGIRO Insights</div>
         <button class="nav-btn active" onclick="switchTab('tab-div', this)">💰 Dividendos</button>
         <button class="nav-btn" onclick="switchTab('tab-port', this)">📊 Portefólio</button>
-        <button class="clear-nav" onclick="clearData()">Limpar Tudo</button>
+        <button class="clear-nav" onclick="clearData()">Limpar Memória</button>
     </div>
 
     <div class="main-content">
@@ -61,21 +64,24 @@
 
         <div id="tab-div" class="tab-content active">
             <div class="card">
-                <h2>Dividendos Recebidos</h2>
+                <h2>Total em Dividendos</h2>
                 <div id="totalDivValue" class="total-display">0.00€</div>
-                <canvas id="chartDiv" style="max-height: 250px;"></canvas>
-                <div id="txItemsContainer" class="item-list"></div>
+                <canvas id="chartDiv" style="max-height: 200px; margin-bottom: 30px;"></canvas>
+                
+                <h3 style="font-size: 0.9em; color: #95a5a6; text-transform: uppercase; letter-spacing: 1px;">Dividendos por Ativo</h3>
+                <div id="dividendTickerContainer" class="item-list">
+                    </div>
             </div>
         </div>
 
         <div id="tab-port" class="tab-content">
             <div class="card">
-                <h2>Alocação de Ativos</h2>
+                <h2>Alocação</h2>
                 <div class="chart-box">
                     <canvas id="chartPort"></canvas>
                     <div class="chart-center">
-                        <span>VALOR TOTAL</span>
-                        <strong id="totalPortValue" style="font-size: 1.4em; display:block;">0.00€</strong>
+                        <span style="font-size: 0.7em; color: #95a5a6; font-weight: bold;">TOTAL</span>
+                        <strong id="totalPortValue" style="font-size: 1.3em; display:block;">0.00€</strong>
                     </div>
                 </div>
                 <div id="portfolioListContainer" class="item-list"></div>
@@ -100,7 +106,7 @@
         if(p) { processPortfolio(JSON.parse(p), false); }
     };
 
-    function clearData() { if(confirm("Apagar todos os dados guardados?")) { localStorage.clear(); location.reload(); } }
+    function clearData() { if(confirm("Limpar dados?")) { localStorage.clear(); location.reload(); } }
 
     document.getElementById('fileDividendos').onchange = (e) => {
         Papa.parse(e.target.files[0], { header: true, complete: (res) => { rawDivData = res.data; processDivs(true); }});
@@ -108,22 +114,57 @@
 
     function processDivs(save) {
         if(save) localStorage.setItem('degiro_divs', JSON.stringify(rawDivData));
-        const m = {}; let t = 0, txs = [];
+        
+        const monthly = {}, tickerSummary = {};
+        let totalGlobal = 0;
+
         rawDivData.forEach(r => {
-            if((r['Descrição']||"").toLowerCase().includes("dividendo") && !r['Descrição'].toLowerCase().includes("imposto")) {
-                const d = r['Data'] || "", ma = d.split('-')[1]+'/'+d.split('-')[2];
-                const v = parseFloat(Object.values(r).find(val => val?.includes(',') && !isNaN(parseFloat(val.replace('.','').replace(',','.'))))?.replace('.','').replace(',','.') || 0);
-                m[ma] = (m[ma] || 0) + v; t += v; txs.push({ d, p: r['Produto'], v });
+            const desc = (r['Descrição']||"").toLowerCase();
+            if(desc.includes("dividendo") && !desc.includes("imposto")) {
+                const dataStr = r['Data'] || "";
+                const ticker = r['Produto'] || "Outros";
+                const val = parseFloat(Object.values(r).find(v => v?.includes(',') && !isNaN(parseFloat(v.replace('.','').replace(',','.'))))?.replace('.','').replace(',','.') || 0);
+                
+                if(val === 0) return;
+
+                // Mensal para o gráfico
+                const ma = dataStr.split('-')[1]+'/'+dataStr.split('-')[2];
+                monthly[ma] = (monthly[ma] || 0) + val;
+                totalGlobal += val;
+
+                // Agrupamento por Ticker
+                if(!tickerSummary[ticker]) tickerSummary[ticker] = { total: 0, dates: [] };
+                tickerSummary[ticker].total += val;
+                tickerSummary[ticker].dates.push({ data: dataStr, valor: val });
             }
         });
-        document.getElementById('totalDivValue').innerText = t.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
-        const labs = Object.keys(m).sort((a,b) => new Date(a.split('/')[1], a.split('/')[0]-1) - new Date(b.split('/')[1], b.split('/')[0]-1));
+
+        // Atualizar UI
+        document.getElementById('totalDivValue').innerText = totalGlobal.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+        
+        // Gráfico Mensal
+        const labs = Object.keys(monthly).sort((a,b) => new Date(a.split('/')[1], a.split('/')[0]-1) - new Date(b.split('/')[1], b.split('/')[0]-1));
         if(chartDiv) chartDiv.destroy();
-        chartDiv = new Chart(document.getElementById('chartDiv'), { type:'bar', data: { labels: labs, datasets:[{label:'€', data: labs.map(l=>m[l].toFixed(2)), backgroundColor:'#2ecc71', borderRadius: 5}] } });
-        document.getElementById('txItemsContainer').innerHTML = txs.sort((a,b)=>new Date(b.d.split('-').reverse().join('-'))-new Date(a.d.split('-').reverse().join('-'))).slice(0,5).map(x => `
-            <div class="list-row"><div class="list-info"><span>${x.p}</span><span style="color:#2ecc71">+${x.v.toFixed(2)}€</span></div><div style="font-size:0.75em; color:#999">${x.d}</div></div>`).join('');
+        chartDiv = new Chart(document.getElementById('chartDiv'), { type:'bar', data: { labels: labs, datasets:[{label:'€', data: labs.map(l=>monthly[l].toFixed(2)), backgroundColor:'#2ecc71', borderRadius: 4}] } });
+
+        // Lista de Tickers Agrupada
+        const sortedTickers = Object.entries(tickerSummary).sort((a, b) => b[1].total - a[1].total);
+        const container = document.getElementById('dividendTickerContainer');
+        container.innerHTML = sortedTickers.map(([name, info]) => `
+            <div class="ticker-group" onclick="this.classList.toggle('open')">
+                <div class="ticker-header">
+                    <span class="ticker-name">${name}</span>
+                    <span class="ticker-total">${info.total.toFixed(2)}€</span>
+                </div>
+                <div class="ticker-details">
+                    ${info.dates.sort((a,b) => new Date(b.data.split('-').reverse().join('-')) - new Date(a.data.split('-').reverse().join('-')))
+                        .map(d => `<div class="detail-row"><span>${d.data}</span><strong>+${d.valor.toFixed(2)}€</strong></div>`).join('')}
+                </div>
+            </div>
+        `).join('');
     }
 
+    // LÓGICA PORTEFÓLIO (Mantida)
     document.getElementById('filePortfolio').onchange = (e) => {
         Papa.parse(e.target.files[0], { header: true, complete: (res) => { processPortfolio(res.data, true); }});
     };
@@ -137,19 +178,11 @@
         });
         a.sort((x, y) => y.v - x.v);
         document.getElementById('totalPortValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
-
         if(chartPort) chartPort.destroy();
         chartPort = new Chart(document.getElementById('chartPort'), {
-            type: 'doughnut', data: { labels: a.map(x=>x.n), datasets:[{ data: a.map(x=>x.v), backgroundColor: colors, hoverOffset: 8 }]},
-            options: { cutout: '82%', maintainAspectRatio: false, plugins: { legend: { display: false }, 
-                tooltip: { backgroundColor:'white', titleColor:'#2c3e50', bodyColor:'#2c3e50', borderColor:'#ddd', borderWidth:1, callbacks: { label: (c) => ` ${c.raw.toFixed(2)}€ (${((c.raw/total)*100).toFixed(1)}%)`} } } }
+            type: 'doughnut', data: { labels: a.map(x=>x.n), datasets:[{ data: a.map(x=>x.v), backgroundColor: colors }]},
+            options: { cutout: '82%', maintainAspectRatio: false, plugins: { legend: { display: false } } }
         });
-
         document.getElementById('portfolioListContainer').innerHTML = a.map((x, i) => {
             const pct = ((x.v / total) * 100).toFixed(1);
-            return `<div class="list-row"><div class="list-info"><span>${x.n}</span><span>${x.v.toFixed(2)}€ (${pct}%)</span></div><div class="progress-bg"><div class="progress-fill" style="width: ${pct}%; background-color: ${colors[i % colors.length]}"></div></div></div>`;
-        }).join('');
-    }
-</script>
-</body>
-</html>
+            return `<div class="list-row" style="padding:10px 0"><div style="display:flex;justify-content:space-between;font-size:0.9em"><span>${x.n}</span><strong>${pct}%</strong></div><div style="background:#eee;height:4px;border-radius:5px;margin-top:5px"><div style="width:${pct}%;background:${colors
