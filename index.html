@@ -17,6 +17,7 @@
         }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
+        /* SIDEBAR */
         .sidebar { width: var(--sidebar-w); background: white; border-right: 1px solid #e1e8ed; display: flex; flex-direction: column; padding: 20px 0; z-index: 10; }
         .sidebar-logo { padding: 0 25px 30px; font-weight: 800; font-size: 1.2em; color: var(--dark); border-bottom: 1px solid #f0f0f0; margin-bottom: 20px; }
         .nav-btn { padding: 15px 25px; cursor: pointer; border: none; background: none; text-align: left; font-size: 0.95em; font-weight: 600; color: #7f8c8d; transition: 0.2s; display: flex; align-items: center; gap: 12px; }
@@ -24,34 +25,33 @@
         .nav-btn.active { background: var(--primary-light); color: var(--primary); border-right: 4px solid var(--primary); }
         .clear-nav { margin-top: auto; color: #e74c3c; padding: 15px 25px; font-weight: bold; cursor: pointer; font-size: 0.85em; border: none; background: none; }
 
+        /* MAIN CONTENT */
         .main-content { flex: 1; overflow-y: auto; padding: 30px; }
         .tab-content { display: none; max-width: 900px; margin: auto; }
         .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
 
         .top-upload-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; background: white; padding: 15px 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); align-items: center; }
         .upload-field label { font-size: 0.65em; font-weight: 800; color: #bdc3c7; display: block; margin-bottom: 5px; text-transform: uppercase; }
-        
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: #ddd; margin-right: 5px; }
+        .status-ok { background: #2ecc71 !important; }
+
         .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .total-display { font-size: 2.5em; font-weight: 800; color: var(--dark); margin-bottom: 10px; }
         
+        /* LISTA TICKERS */
         .ticker-group { border: 1px solid #f0f2f5; border-radius: 12px; margin-bottom: 10px; overflow: hidden; background: white; cursor: pointer; transition: 0.2s; }
-        .ticker-group:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .ticker-group:hover { border-color: var(--primary); }
         .ticker-header { display: flex; justify-content: space-between; padding: 18px 20px; align-items: center; }
-        .ticker-name { font-weight: 700; color: var(--dark); font-size: 0.95em; }
+        .ticker-name { font-weight: 700; color: var(--dark); font-size: 0.95em; display: flex; align-items: center; gap: 8px; }
         .ticker-total { font-weight: 800; color: var(--primary); }
-        .broker-tag { font-size: 0.7em; padding: 2px 6px; border-radius: 4px; margin-left: 8px; text-transform: uppercase; vertical-align: middle; }
-        .tag-degiro { background: #eee; color: #666; }
-        .tag-xtb { background: #1a1a1a; color: #fff; }
         
+        .broker-tag { font-size: 0.65em; padding: 3px 7px; border-radius: 4px; font-weight: 800; }
+        .tag-degiro { background: #f0f0f0; color: #666; }
+        .tag-xtb { background: #2c3e50; color: #fff; }
+
         .ticker-details { display: none; background: #fcfdfe; padding: 15px 20px; border-top: 1px solid #f0f2f5; }
         .ticker-group.open .ticker-details { display: block; }
         .detail-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.85em; border-bottom: 1px solid #f4f7f9; color: #666; }
-
-        .chart-box { position: relative; height: 320px; margin: 20px 0; }
-        .chart-center { position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none; }
-        
-        .progress-bg { background: #edf2f7; height: 6px; border-radius: 10px; margin-top: 8px; }
-        .progress-fill { height: 100%; border-radius: 10px; transition: width 0.8s; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -67,14 +67,23 @@
 
     <div class="main-content">
         <div class="top-upload-bar">
-            <div class="upload-field"><label>DEGIRO (Account.csv)</label><input type="file" id="fileDegiro"></div>
-            <div class="upload-field"><label>XTB (Cash Operations.csv)</label><input type="file" id="fileXtb"></div>
-            <div class="upload-field"><label>CARTEIRA (Portfolio.csv)</label><input type="file" id="filePortfolio"></div>
+            <div class="upload-field">
+                <label><span id="dot-degiro" class="status-dot"></span>DEGIRO (Account.csv)</label>
+                <input type="file" id="fileDegiro">
+            </div>
+            <div class="upload-field">
+                <label><span id="dot-xtb" class="status-dot"></span>XTB (Cash Operations.csv)</label>
+                <input type="file" id="fileXtb">
+            </div>
+            <div class="upload-field">
+                <label><span id="dot-port" class="status-dot"></span>CARTEIRA (Portfolio.csv)</label>
+                <input type="file" id="filePortfolio">
+            </div>
         </div>
 
         <div id="tab-div" class="tab-content active">
             <div class="card">
-                <h2 style="font-size: 0.8em; color: #95a5a6; margin-bottom: 5px;">DIVIDENDOS TOTAIS (CONSOLIDADO)</h2>
+                <h2 style="font-size: 0.8em; color: #95a5a6; margin-bottom: 5px;">DIVIDENDOS CONSOLIDADOS</h2>
                 <div id="totalDivValue" class="total-display">0.00€</div>
                 <canvas id="chartDiv" style="max-height: 250px; margin-bottom: 30px;"></canvas>
                 <h3 style="font-size: 0.85em; color: var(--dark); border-bottom: 2px solid var(--primary); display: inline-block; padding-bottom: 5px; margin-bottom: 20px;">DETALHE POR ATIVO</h3>
@@ -84,23 +93,15 @@
 
         <div id="tab-port" class="tab-content">
             <div class="card">
-                <h2>Alocação Atual</h2>
-                <div class="chart-box">
-                    <canvas id="chartPort"></canvas>
-                    <div class="chart-center">
-                        <span style="font-size: 0.7em; color: #95a5a6; font-weight: bold;">TOTAL</span>
-                        <strong id="totalPortValue" style="font-size: 1.4em; display:block; color: var(--dark);">0.00€</strong>
-                    </div>
-                </div>
-                <div id="portfolioListContainer"></div>
+                <h2>Alocação de Portefólio</h2>
+                <div id="portfolioListContainer">Carregue o ficheiro da carteira...</div>
             </div>
         </div>
     </div>
 
 <script>
-    let chartDiv, chartPort;
+    let chartDiv;
     let dividendsData = { degiro: [], xtb: [] };
-    const bluePalette = ['#2980b9','#3498db','#5dade2','#85c1e9','#aed6f1','#21618c','#1f618d','#2e86c1','#5499c7','#7fb3d5'];
 
     function switchTab(tabId, btn) {
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -110,39 +111,58 @@
     }
 
     window.onload = () => {
-        const d = localStorage.getItem('divs_degiro'), x = localStorage.getItem('divs_xtb'), p = localStorage.getItem('port_data');
-        if(d) dividendsData.degiro = JSON.parse(d);
-        if(x) dividendsData.xtb = JSON.parse(x);
+        const d = localStorage.getItem('divs_degiro'), x = localStorage.getItem('divs_xtb');
+        if(d) { dividendsData.degiro = JSON.parse(d); document.getElementById('dot-degiro').classList.add('status-ok'); }
+        if(x) { dividendsData.xtb = JSON.parse(x); document.getElementById('dot-xtb').classList.add('status-ok'); }
         if(d || x) processAllDividends();
-        if(p) processPortfolio(JSON.parse(p), false);
     };
 
-    function clearData() { if(confirm("Apagar tudo?")) { localStorage.clear(); location.reload(); } }
+    function clearData() { if(confirm("Apagar todos os dados?")) { localStorage.clear(); location.reload(); } }
 
-    // Handlers de Upload
+    // --- LOGICA DEGIRO ---
     document.getElementById('fileDegiro').onchange = (e) => {
         Papa.parse(e.target.files[0], { header: true, complete: (res) => { 
             dividendsData.degiro = res.data;
             localStorage.setItem('divs_degiro', JSON.stringify(res.data));
+            document.getElementById('dot-degiro').classList.add('status-ok');
             processAllDividends();
         }});
     };
 
+    // --- LOGICA XTB (COM FIX PARA CABEÇALHO) ---
     document.getElementById('fileXtb').onchange = (e) => {
-        Papa.parse(e.target.files[0], { header: true, skipEmptyLines: true, complete: (res) => {
-            // A XTB tem 4 linhas de cabeçalho no ficheiro original, o PapaParse tenta ler a partir da 5ª se houver lixo
-            const cleanData = res.data.filter(r => r.Type || r['Type']);
-            dividendsData.xtb = cleanData;
-            localStorage.setItem('divs_xtb', JSON.stringify(cleanData));
-            processAllDividends();
-        }});
+        Papa.parse(e.target.files[0], { 
+            complete: (res) => {
+                // Encontrar a linha que contém "Type" (o cabeçalho real)
+                const headerIndex = res.data.findIndex(row => row.includes("Type") && row.includes("Amount"));
+                if (headerIndex === -1) {
+                    alert("Erro: Não foi possível encontrar o cabeçalho no ficheiro XTB.");
+                    return;
+                }
+                
+                const headers = res.data[headerIndex];
+                const rows = res.data.slice(headerIndex + 1);
+                
+                // Converter para objeto usando os cabeçalhos encontrados
+                const formattedData = rows.map(row => {
+                    let obj = {};
+                    headers.forEach((h, i) => obj[h] = row[i]);
+                    return obj;
+                });
+
+                dividendsData.xtb = formattedData.filter(r => r.Type);
+                localStorage.setItem('divs_xtb', JSON.stringify(dividendsData.xtb));
+                document.getElementById('dot-xtb').classList.add('status-ok');
+                processAllDividends();
+            }
+        });
     };
 
     function processAllDividends() {
         const monthly = {}, tickerSummary = {};
         let totalGlobal = 0;
 
-        // 1. Processar DEGIRO
+        // Processar DEGIRO
         dividendsData.degiro.forEach(r => {
             const desc = (r['Descrição']||"").toLowerCase();
             if(desc.includes("dividendo") && !desc.includes("imposto") && !desc.includes("retido")) {
@@ -155,50 +175,50 @@
             }
         });
 
-        // 2. Processar XTB
+        // Processar XTB
         dividendsData.xtb.forEach(r => {
             const type = (r['Type'] || "").toLowerCase();
             if(type === "dividend") {
-                const val = parseFloat(r['Amount'] || 0);
+                const val = parseFloat((r['Amount'] || "0").toString().replace(',','.'));
                 if(val <= 0) return;
                 const ticker = r['Instrument'] || "Outros";
-                const date = (r['Time'] || "").split(' ')[0].split('.').reverse().join('-'); // Ajusta data XTB
+                const dateRaw = r['Time'] || "";
+                const date = dateRaw.split(' ')[0].replace(/\./g, '-'); // Normaliza 2026.01.06 para 2026-01-06
                 updateStats(ticker, val, date, 'XTB', tickerSummary, monthly);
                 totalGlobal += val;
             }
         });
 
-        renderDividendUI(totalGlobal, monthly, tickerSummary);
+        renderUI(totalGlobal, monthly, tickerSummary);
     }
 
     function updateStats(ticker, val, date, broker, summary, monthly) {
-        // Ticker Summary
         if(!summary[ticker]) summary[ticker] = { total: 0, broker, dates: [] };
         summary[ticker].total += val;
         summary[ticker].dates.push({ date, val });
 
-        // Monthly
-        const parts = date.split(/[-/.]/);
-        const ma = parts.length >= 3 ? `${parts[1]}/${parts[0]}` : "Outros"; // MM/YYYY
+        const parts = date.split('-');
+        const ma = parts.length >= 2 ? `${parts[1]}/${parts[0]}` : "Outros";
         monthly[ma] = (monthly[ma] || 0) + val;
     }
 
-    function renderDividendUI(total, monthly, summary) {
+    function renderUI(total, monthly, summary) {
         document.getElementById('totalDivValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
         
-        // Gráfico
         const labs = Object.keys(monthly).sort();
         if(chartDiv) chartDiv.destroy();
         chartDiv = new Chart(document.getElementById('chartDiv'), { 
             type:'bar', data: { labels: labs, datasets:[{label:'€', data: labs.map(l=>monthly[l].toFixed(2)), backgroundColor:'#3498db', borderRadius: 5}] } 
         });
 
-        // Lista
         const sorted = Object.entries(summary).sort((a,b) => b[1].total - a[1].total);
         document.getElementById('dividendTickerContainer').innerHTML = sorted.map(([name, info]) => `
             <div class="ticker-group" onclick="this.classList.toggle('open')">
                 <div class="ticker-header">
-                    <span class="ticker-name">${name} <span class="broker-tag ${info.broker === 'XTB' ? 'tag-xtb' : 'tag-degiro'}">${info.broker}</span></span>
+                    <span class="ticker-name">
+                        ${name} 
+                        <span class="broker-tag ${info.broker === 'XTB' ? 'tag-xtb' : 'tag-degiro'}">${info.broker}</span>
+                    </span>
                     <span class="ticker-total">${info.total.toFixed(2)}€</span>
                 </div>
                 <div class="ticker-details">
@@ -207,31 +227,6 @@
                 </div>
             </div>
         `).join('');
-    }
-
-    // Lógica Portefólio (Simplificada)
-    document.getElementById('filePortfolio').onchange = (e) => {
-        Papa.parse(e.target.files[0], { header: true, complete: (res) => { processPortfolio(res.data, true); }});
-    };
-
-    function processPortfolio(data, save) {
-        if(save) localStorage.setItem('port_data', JSON.stringify(data));
-        let total = 0; const a = [];
-        data.forEach(r => {
-            const p = r['Produto'], col = Object.keys(r), v = parseFloat((r[col[col.length-1]]||"0").replace('.','').replace(',','.'));
-            if(p && !p.includes("CASH") && v > 0) { a.push({ n: p, v }); total += v; }
-        });
-        a.sort((x, y) => y.v - x.v);
-        document.getElementById('totalPortValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
-        if(chartPort) chartPort.destroy();
-        chartPort = new Chart(document.getElementById('chartPort'), {
-            type: 'doughnut', data: { labels: a.map(x=>x.n), datasets:[{ data: a.map(x=>x.v), backgroundColor: bluePalette }]},
-            options: { cutout: '82%', maintainAspectRatio: false, plugins: { legend: { display: false } } }
-        });
-        document.getElementById('portfolioListContainer').innerHTML = a.map((x, i) => {
-            const pct = ((x.v / total) * 100).toFixed(1);
-            return `<div style="margin-bottom:15px"><div style="display:flex;justify-content:space-between;font-size:0.9em;font-weight:600"><span>${x.n}</span><span>${pct}%</span></div><div class="progress-bg"><div class="progress-fill" style="width:${pct}%;background:${bluePalette[i%bluePalette.length]}"></div></div></div>`;
-        }).join('');
     }
 </script>
 </body>
