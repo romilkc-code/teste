@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Dashboard Financeiro</title>
+    <title>Dashboard Financeiro V3.2</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -35,7 +35,7 @@
 <body>
 
     <div class="sidebar">
-        <div class="sidebar-logo">DASHBOARD V3.1</div>
+        <div class="sidebar-logo">DASHBOARD V3.2</div>
         <button class="nav-btn active">💰 Dividendos</button>
         <button class="nav-btn" style="color:#e74c3c; margin-top: auto;" onclick="localStorage.clear(); location.reload();">Limpar Tudo</button>
     </div>
@@ -57,13 +57,13 @@
         </div>
 
         <div class="card">
-            <h2 style="font-size: 0.8em; color: #95a5a6;">TOTAL DIVIDENDOS RECEBIDOS</h2>
+            <h2 style="font-size: 0.8em; color: #95a5a6;">TOTAL DIVIDENDOS (DEGIRO + XTB)</h2>
             <div id="totalDivValue" class="total-display">0.00€</div>
             <canvas id="chartDiv" style="max-height: 200px;"></canvas>
         </div>
 
         <div id="dividendTickerContainer"></div>
-        <div id="logConsole">> Consola de sistema pronta...<br></div>
+        <div id="logConsole">> Sistema iniciado. Aguardando ficheiros...<br></div>
     </div>
 
 <script>
@@ -89,16 +89,14 @@
             localStorage.setItem('d_degiro', JSON.stringify(res.data));
             document.getElementById('s-degiro').className = 'status-badge status-ok';
             processData();
-            log("DEGIRO carregada.");
+            log("DEGIRO: Carregada.");
         }});
     };
 
     document.getElementById('f-xtb').onchange = (e) => {
-        // Leitura em bruto para encontrar o cabeçalho manualmente
         const reader = new FileReader();
         reader.onload = function(event) {
             const text = event.target.result;
-            // Tenta identificar o separador (vírgula ou ponto e vírgula)
             const sep = text.includes(';') ? ';' : ',';
             
             Papa.parse(text, {
@@ -106,31 +104,41 @@
                 skipEmptyLines: true,
                 complete: (res) => {
                     const data = res.data;
-                    // Procura a linha que contém "Type" e "Instrument" ignorando espaços
-                    let headerIdx = data.findIndex(row => 
-                        row.some(cell => cell && cell.toString().trim() === "Type")
-                    );
+                    let headerRowIndex = -1;
+                    let typeColIndex = -1;
+
+                    // BUSCA DINÂMICA: Procura "Type" em qualquer linha e qualquer coluna
+                    for(let i=0; i<data.length; i++) {
+                        const colIdx = data[i].findIndex(cell => cell && cell.toString().trim() === "Type");
+                        if(colIdx !== -1) {
+                            headerRowIndex = i;
+                            typeColIndex = colIdx;
+                            break;
+                        }
+                    }
                     
-                    if(headerIdx === -1) {
-                        log("ERRO: Não encontrei a coluna 'Type'. Certifica-te que carregaste o ficheiro 'Cash Operations'.");
+                    if(headerRowIndex === -1) {
+                        log("ERRO: Não encontrei a coluna 'Type'. Verifica se o ficheiro é o 'Cash Operations'.");
                         return;
                     }
 
-                    // Normaliza os cabeçalhos (remove espaços)
-                    const headers = data[headerIdx].map(h => h.trim());
-                    const rows = data.slice(headerIdx + 1);
+                    // Extrair cabeçalhos a partir da coluna onde "Type" foi encontrado
+                    const rawHeaders = data[headerRowIndex];
+                    const rows = data.slice(headerRowIndex + 1);
                     
                     const formatted = rows.map(r => {
                         let obj = {};
-                        headers.forEach((h, i) => obj[h] = r[i]);
+                        rawHeaders.forEach((h, i) => {
+                            if(h) obj[h.trim()] = r[i];
+                        });
                         return obj;
-                    }).filter(r => r.Type);
+                    }).filter(r => r.Type && r.Type.trim() !== "");
 
                     dividends.xtb = formatted;
                     localStorage.setItem('d_xtb', JSON.stringify(formatted));
                     document.getElementById('s-xtb').className = 'status-badge status-ok';
                     processData();
-                    log(`XTB: ${formatted.length} linhas processadas.`);
+                    log(`XTB: Sucesso! Encontrado na linha ${headerRowIndex+1}. ${formatted.length} movimentos lidos.`);
                 }
             });
         };
@@ -141,7 +149,7 @@
         const summary = {}, monthly = {};
         let grandTotal = 0;
 
-        // DEGIRO
+        // Processar DEGIRO
         dividends.degiro.forEach(r => {
             const desc = (r['Descrição'] || "").toLowerCase();
             if(desc.includes("dividendo") && !desc.includes("imposto")) {
@@ -154,12 +162,14 @@
             }
         });
 
-        // XTB
+        // Processar XTB
         dividends.xtb.forEach(r => {
-            if((r['Type'] || "").trim().toLowerCase() === "dividend") {
+            const type = (r['Type'] || "").trim().toLowerCase();
+            if(type === "dividend") {
                 const val = parseFloat(r['Amount']?.toString().replace(',','.') || 0);
                 if(val > 0) {
-                    const date = (r['Time'] || "").split(' ')[0].replace(/\./g, '-');
+                    const dateRaw = r['Time'] || "";
+                    const date = dateRaw.split(' ')[0].replace(/\./g, '-');
                     addEntry(summary, monthly, r['Instrument'] || "Outros", val, date, 'XTB');
                     grandTotal += val;
                 }
@@ -173,13 +183,22 @@
         if(!summary[ticker]) summary[ticker] = { total: 0, broker, dates: [] };
         summary[ticker].total += val;
         summary[ticker].dates.push({ date, val });
-        const m = date.split('-')[1] + '/' + date.split('-')[0];
-        monthly[m] = (monthly[m] || 0) + val;
+
+        const parts = date.split('-');
+        if(parts.length >= 2) {
+            const m = parts[1] + '/' + parts[0];
+            monthly[m] = (monthly[m] || 0) + val;
+        }
     }
 
     function updateUI(total, summary, monthly) {
         document.getElementById('totalDivValue').innerText = total.toLocaleString('pt-PT', {style:'currency', currency:'EUR'});
-        const labels = Object.keys(monthly).sort();
+        
+        const labels = Object.keys(monthly).sort((a,b) => {
+            const [m1, y1] = a.split('/'), [m2, y2] = b.split('/');
+            return new Date(y1, m1) - new Date(y2, m2);
+        });
+
         if(chartObj) chartObj.destroy();
         chartObj = new Chart(document.getElementById('chartDiv'), {
             type: 'bar',
@@ -187,14 +206,17 @@
         });
 
         const container = document.getElementById('dividendTickerContainer');
-        container.innerHTML = Object.entries(summary).sort((a,b) => b[1].total - a[1].total).map(([name, info]) => `
+        const sorted = Object.entries(summary).sort((a,b) => b[1].total - a[1].total);
+        
+        container.innerHTML = sorted.map(([name, info]) => `
             <div class="ticker-group" onclick="this.classList.toggle('open')">
                 <div class="ticker-header">
                     <span class="ticker-name">${name} <span class="broker-tag tag-${info.broker.toLowerCase()}">${info.broker}</span></span>
                     <span class="ticker-total">${info.total.toFixed(2)}€</span>
                 </div>
                 <div class="ticker-details">
-                    ${info.dates.map(d => `<div class="detail-row"><span>${d.date}</span><strong>+${d.val.toFixed(2)}€</strong></div>`).join('')}
+                    ${info.dates.sort((a,b) => new Date(b.date) - new Date(a.date))
+                        .map(d => `<div class="detail-row"><span>${d.date}</span><strong>+${d.val.toFixed(2)}€</strong></div>`).join('')}
                 </div>
             </div>
         `).join('');
