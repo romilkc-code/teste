@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance Dashboard Pro</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+body{font-family:Inter,Arial;background:#0f172a;color:#fff;margin:0;padding:20px}
+.card{background:#111827;padding:20px;border-radius:16px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
+.big{font-size:1.8em;font-weight:800}
+.small{color:#94a3b8;font-size:0.75em}
+.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1f2937}
+select{background:#1f2937;color:#fff;border:none;padding:8px;border-radius:8px;margin-right:10px}
+.controls{display:flex;gap:10px;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<h2>📊 Dashboard Financeiro (Pro)</h2>
+<input type="file" id="fileInput" multiple>
+
+<div class="card controls">
+  <div>
+    <label class="small">Mês</label><br>
+    <select id="monthFilter"></select>
+  </div>
+  <div>
+    <label class="small">Ordenar por</label><br>
+    <select id="sortField">
+      <option value="date">Data</option>
+      <option value="ticker">Nome</option>
+      <option value="net">Valor</option>
+    </select>
+  </div>
+  <div>
+    <label class="small">Ordem</label><br>
+    <select id="sortOrder">
+      <option value="desc">Decrescente</option>
+      <option value="asc">Crescente</option>
+    </select>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card"><div class="small">TOTAL BRUTO</div><div id="gross" class="big">0€</div></div>
+  <div class="card"><div class="small">IMPOSTOS</div><div id="tax" class="big">0€</div></div>
+  <div class="card"><div class="small">TOTAL LÍQUIDO</div><div id="net" class="big">0€</div></div>
+  <div class="card"><div class="small">MÉDIA MENSAL</div><div id="avg" class="big">0€</div></div>
+</div>
+
+<div class="card">
+  <h3>📋 Todos os Dividendos</h3>
+  <div id="list"></div>
+</div>
+
+<script>
+let allData = [];
+let monthlyCache = {};
+
+function detectFormat(headers){
+    const h = headers.join(" ").toLowerCase();
+    if(h.includes("descrição")) return "degiro";
+    if(h.includes("type") && h.includes("amount")) return "xtb";
+    return "unknown";
+}
+
+function normalize(data, type){
+    let result = [];
+
+    if(type === "degiro"){
+        data.forEach(r=>{
+            const desc = (r['Descrição']||"").toLowerCase();
+            if(desc.includes("dividendo") && !desc.includes("imposto")){
+                const raw = Object.values(r).find(v=>String(v).match(/[0-9]/));
+                const val = parseFloat(String(raw||"0").replace(/\./g,'').replace(',','.'));
+                if(val>0){
+                    result.push({ticker:r['Produto'],gross:val,tax:0,net:val,date:r['Data']});
+                }
+            }
+        });
+    }
+
+    if(type === "xtb"){
+        let temp = {};
+        data.forEach(r=>{
+            const t = (r['Type']||"").trim();
+            const key = r['Time'] + '_' + r['Instrument'];
+
+            if(!temp[key]) temp[key] = {ticker:r['Instrument'],gross:0,tax:0,date:r['Time']};
+            if(t === "Dividend") temp[key].gross += Number(r['Amount']);
+            if(t === "Withholding tax") temp[key].tax += Math.abs(Number(r['Amount']));
+        });
+
+        Object.values(temp).forEach(x=>{
+            if(x.gross>0){
+                const dateStr = (x.date||"").toString().split(' ')[0];
+                result.push({ticker:x.ticker,gross:x.gross,tax:x.tax,net:x.gross-x.tax,date:dateStr});
+            }
+        });
+    }
+
+    return result;
+}
+
+function buildMonthly(){
+    let monthly={};
+    allData.forEach(d=>{
+        let parts=d.date.split(/[-/]/);
+        if(parts.length<2) return;
+        let key = parts[1]+"/"+parts[0];
+
+        if(!monthly[key]) monthly[key]={gross:0,tax:0,net:0};
+        monthly[key].gross += d.gross;
+        monthly[key].tax += d.tax;
+        monthly[key].net += d.net;
+    });
+
+    monthlyCache = monthly;
+
+    const select=document.getElementById('monthFilter');
+    select.innerHTML='<option value="all">Todos</option>' +
+        Object.keys(monthly).sort().map(m=>`<option value="${m}">${m}</option>`).join('');
+}
+
+function process(){
+    buildMonthly();
+    updateUI();
+}
+
+function updateUI(){
+    const selected=document.getElementById('monthFilter').value;
+    const sortField=document.getElementById('sortField').value;
+    const sortOrder=document.getElementById('sortOrder').value;
+
+    let gross=0,tax=0,net=0;
+
+    let filtered = allData.filter(d=>{
+        let parts=d.date.split(/[-/]/);
+        let key = parts.length>=2 ? parts[1]+"/"+parts[0] : "";
+        return selected==='all' || key===selected;
+    });
+
+    filtered.forEach(d=>{
+        gross+=d.gross;
+        tax+=d.tax;
+        net+=d.net;
+    });
+
+    // sorting
+    filtered.sort((a,b)=>{
+        let v1=a[sortField];
+        let v2=b[sortField];
+
+        if(sortField==='date'){
+            v1=new Date(a.date);
+            v2=new Date(b.date);
+        }
+
+        if(v1<v2) return sortOrder==='asc'?-1:1;
+        if(v1>v2) return sortOrder==='asc'?1:-1;
+        return 0;
+    });
+
+    document.getElementById('gross').innerText=gross.toFixed(2)+"€";
+    document.getElementById('tax').innerText=tax.toFixed(2)+"€";
+    document.getElementById('net').innerText=net.toFixed(2)+"€";
+
+    const months=Object.keys(monthlyCache);
+    const avg=(months.length? Object.values(monthlyCache).reduce((a,b)=>a+b.net,0)/months.length:0);
+    document.getElementById('avg').innerText=avg.toFixed(2)+"€";
+
+    document.getElementById('list').innerHTML=filtered.map(d=>
+        `<div class="row">
+            <span>${d.date} - ${d.ticker}</span>
+            <strong>${d.net.toFixed(2)}€</strong>
+        </div>`
+    ).join('');
+}
+
+function readXLSX(file){
+    return new Promise((resolve)=>{
+        const reader=new FileReader();
+        reader.onload=e=>{
+            try{
+                resolve(XLSX.read(e.target.result,{type:'array',cellDates:true}));
+            }catch{
+                const bytes=new Uint8Array(e.target.result);
+                let binary='';for(let i=0;i<bytes.length;i++) binary+=String.fromCharCode(bytes[i]);
+                resolve(XLSX.read(binary,{type:'binary',cellDates:true}));
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+async function handleFile(file){
+    const name=file.name.toLowerCase();
+
+    if(name.endsWith('.xlsx')){
+        const wb=await readXLSX(file);
+        const sheet=wb.Sheets["Cash Operations"]||wb.Sheets[wb.SheetNames[0]];
+        const raw=XLSX.utils.sheet_to_json(sheet,{header:1});
+
+        const idx=raw.findIndex(r=>r.join(" ").toLowerCase().includes("type")||r.join(" ").toLowerCase().includes("descrição"));
+        if(idx===-1) return;
+
+        const headers=raw[idx];
+        const rows=raw.slice(idx+1);
+
+        const json=rows.map(r=>{let o={};headers.forEach((h,i)=>o[h]=r[i]);return o});
+
+        const type=detectFormat(headers);
+        allData.push(...normalize(json,type));
+        process();
+
+    }else{
+        Papa.parse(file,{header:true,skipEmptyLines:true,complete:res=>{
+            if(!res.data.length) return;
+            const type=detectFormat(Object.keys(res.data[0]||{}));
+            allData.push(...normalize(res.data,type));
+            process();
+        }});
+    }
+}
+
+document.getElementById('fileInput').addEventListener('change',e=>{
+    allData=[];
+    [...e.target.files].forEach(handleFile);
+});
+
+document.getElementById('monthFilter').addEventListener('change',updateUI);
+document.getElementById('sortField').addEventListener('change',updateUI);
+document.getElementById('sortOrder').addEventListener('change',updateUI);
+
+</script>
+
+</body>
+</html>
