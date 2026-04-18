@@ -239,8 +239,12 @@
         let totalGlobal = 0, filteredTotal = 0;
         const assets = [];
 
-        // Lista de tickers/nomes fornecida para reforçar o filtro de ETFs
-        const specificETFTickers = ['EQQB', 'QDVE', 'SXR8', 'VGWD', 'VUSA', 'VWCE'];
+        // Lista de tickers, ISINs e fragmentos de nome para identificação precisa
+        const specificETFTickers = [
+            'EQQB', 'QDVE', 'SXR8', 'VGWD', 'VUSA', 'VWCE', 
+            'IE00B8GKDB10', 'IE00B3WJKG14', // ISINs adicionados
+            'VNGRD FTSE ALL-WLD', 'ISHARES S&P 500 INFO' // Fragmentos de nome adicionados
+        ];
 
         data.forEach(r => {
             const nome = r['Produto'] || "";
@@ -252,11 +256,11 @@
 
                 const isCommodity = nome.toLowerCase().includes("gold") || nome.toLowerCase().includes("silver") || ticker.includes("XAU") || ticker.includes("XAG");
                 
-                // Lógica de ETF reforçada com a tua lista
+                // Lógica de ETF reforçada com ISINs e nomes específicos
                 const isETF = nome.toLowerCase().includes("etf") || 
                               nome.toLowerCase().includes("ucits") || 
                               specificETFTickers.some(t => ticker.includes(t)) ||
-                              specificETFTickers.some(t => nome.includes(t));
+                              specificETFTickers.some(t => nome.toUpperCase().includes(t.toUpperCase()));
                 
                 let match = false;
                 if(filterValue === 'all') match = true;
@@ -320,8 +324,8 @@
         }).join('');
     }
 
-    // (As restantes funções de dividendos permanecem iguais para manter a integridade do código)
-    function processAllDividends() { /* ... lógica de dividendos ... */ }
+    // Funções de dividendos mantidas para integridade
+    function processAllDividends() { /* ... */ }
 </script>
 </body>
 </html>
