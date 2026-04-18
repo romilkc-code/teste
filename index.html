@@ -114,6 +114,18 @@
         .upload-field label { display: block; font-size: 0.65rem; color: var(--primary); margin-bottom: 8px; font-weight: 700; }
         input[type="file"] { font-size: 0.7rem; color: var(--text-dim); width: 100%; }
 
+        /* Estilo do Select de Filtro */
+        .filter-select {
+            background: var(--bg-main);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            outline: none;
+            cursor: pointer;
+        }
+
         .ticker-group { 
             background: #1e293b; 
             border: 1px solid var(--border); 
@@ -183,8 +195,15 @@
                 </div>
             </div>
             <div class="card">
-                <div class="metric-label">Alocação de Ativos</div>
-                <div style="height: 400px; margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div class="metric-label">Alocação de Ativos</div>
+                    <select id="portfolioFilter" class="filter-select" onchange="applyPortfolioFilter()">
+                        <option value="all">Todos os Ativos</option>
+                        <option value="stocks">Ações</option>
+                        <option value="etfs">ETFs</option>
+                    </select>
+                </div>
+                <div style="height: 400px; margin-top: 20px; position: relative;">
                     <canvas id="chartPort"></canvas>
                 </div>
                 <div id="portfolioListContainer" style="margin-top: 40px;"></div>
@@ -195,6 +214,7 @@
 <script>
     let chartDiv, chartPort;
     let dividendsData = { degiro: [], xtb: [] };
+    let currentPortfolioData = []; // Guardar dados para o filtro
 
     Chart.defaults.color = '#94a3b8';
     Chart.defaults.borderColor = '#334155';
@@ -206,7 +226,6 @@
         btn.classList.add('active');
     }
 
-    // Limpeza de números do CSV (Trata "1.437,49" para 1437.49)
     function parseLocaleNumber(stringNumber) {
         if(!stringNumber) return 0;
         let res = stringNumber.toString().replace(/\./g, '').replace(',', '.');
@@ -218,12 +237,14 @@
         if(d) dividendsData.degiro = JSON.parse(d);
         if(x) dividendsData.xtb = JSON.parse(x);
         if(d || x) processAllDividends();
-        if(p) processPortfolio(JSON.parse(p), false);
+        if(p) {
+            currentPortfolioData = JSON.parse(p);
+            processPortfolio(currentPortfolioData, false);
+        }
     };
 
     function clearData() { if(confirm("Apagar todos os dados?")) { localStorage.clear(); location.reload(); } }
 
-    // Upload Handlers
     document.getElementById('fileDegiro').onchange = (e) => {
         Papa.parse(e.target.files[0], { header: true, complete: (res) => { 
             dividendsData.degiro = res.data;
@@ -253,12 +274,16 @@
             header: true, 
             skipEmptyLines: true, 
             complete: (res) => {
+                currentPortfolioData = res.data;
                 processPortfolio(res.data, true);
             }
         });
     };
 
-    // Lógica de Dividendos
+    function applyPortfolioFilter() {
+        processPortfolio(currentPortfolioData, false);
+    }
+
     function processAllDividends() {
         const monthly = {}, tickerSummary = {};
         let totalGlobal = 0;
@@ -320,29 +345,64 @@
         `).join('');
     }
 
-    // Lógica do Portfólio (Corrigida para o teu CSV)
+    // Lógica do Portfólio com Filtro e Valor Central
     function processPortfolio(data, save) {
+        if(!data || data.length === 0) return;
         if(save) localStorage.setItem('port_data', JSON.stringify(data));
         
+        const filterValue = document.getElementById('portfolioFilter').value;
         let totalGlobal = 0;
+        let filteredTotal = 0;
         const assets = [];
 
         data.forEach(r => {
-            const nome = r['Produto'];
-            // A coluna certa no teu CSV é "Valor em EUR"
+            const nome = r['Produto'] || "";
             const valor = parseLocaleNumber(r['Valor em EUR']);
 
             if(nome && valor > 0) {
+                // Cálculo para o card de valor total (sempre tudo)
                 totalGlobal += valor;
-                // Não incluímos o "Cash" no gráfico de anel para ver melhor as ações
-                if(!nome.includes("CASH")) {
+
+                const isETF = nome.toLowerCase().includes("etf") || nome.toLowerCase().includes("ucits") || nome.toLowerCase().includes("ishares");
+                
+                // Aplicar lógica do filtro
+                let matchFilter = false;
+                if(filterValue === 'all') matchFilter = true;
+                else if(filterValue === 'stocks' && !isETF && !nome.includes("CASH")) matchFilter = true;
+                else if(filterValue === 'etfs' && isETF) matchFilter = true;
+
+                if(matchFilter && !nome.includes("CASH")) {
                     assets.push({ n: nome, v: valor });
+                    filteredTotal += valor;
                 }
             }
         });
 
         assets.sort((a, b) => b.v - a.v);
         document.getElementById('totalPortValue').innerText = totalGlobal.toLocaleString('pt-PT', {style:'currency', currency:'EUR'});
+
+        // Plugin para desenhar o texto no centro
+        const centerTextPlugin = {
+            id: 'centerText',
+            afterDraw: (chart) => {
+                const { ctx, chartArea: { left, right, top, bottom, width, height } } = chart;
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Valor numérico
+                ctx.font = 'bold 1.5rem Inter';
+                ctx.fillStyle = '#f8fafc';
+                const displayText = filteredTotal.toLocaleString('pt-PT', { maximumFractionDigits: 0 }) + "€";
+                ctx.fillText(displayText, left + width / 2, top + height / 2 - 5);
+                
+                // Label "Total"
+                ctx.font = '600 0.7rem Inter';
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillText(filterValue === 'all' ? 'TOTAL' : filterValue.toUpperCase(), left + width / 2, top + height / 2 + 25);
+                ctx.restore();
+            }
+        };
 
         if(chartPort) chartPort.destroy();
         chartPort = new Chart(document.getElementById('chartPort'), {
@@ -351,21 +411,23 @@
                 labels: assets.map(a => a.n),
                 datasets: [{
                     data: assets.map(a => a.v),
-                    backgroundColor: ['#38bdf8','#818cf8','#fb7185','#34d399','#fbbf24','#a78bfa','#f472b6','#10b981'],
-                    borderWidth: 0
+                    backgroundColor: ['#38bdf8','#818cf8','#fb7185','#34d399','#fbbf24','#a78bfa','#f472b6','#10b981','#6366f1','#ec4899'],
+                    borderWidth: 0,
+                    hoverOffset: 10
                 }]
             },
             options: {
-                cutout: '70%',
+                cutout: '75%',
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'right', labels: { boxWidth: 12, padding: 15, font: { size: 11 } } }
+                    legend: { display: false } // Escondemos a legenda padrão para focar no gráfico e lista
                 }
-            }
+            },
+            plugins: [centerTextPlugin]
         });
 
         document.getElementById('portfolioListContainer').innerHTML = assets.map(a => {
-            const pct = ((a.v / totalGlobal) * 100).toFixed(1);
+            const pct = ((a.v / filteredTotal) * 100).toFixed(1);
             return `
                 <div style="margin-bottom:18px">
                     <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:8px">
