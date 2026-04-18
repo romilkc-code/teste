@@ -114,7 +114,6 @@
         .upload-field label { display: block; font-size: 0.65rem; color: var(--primary); margin-bottom: 8px; font-weight: 700; }
         input[type="file"] { font-size: 0.7rem; color: var(--text-dim); width: 100%; }
 
-        /* Estilo do Select de Filtro */
         .filter-select {
             background: var(--bg-main);
             color: var(--text-main);
@@ -201,12 +200,19 @@
                         <option value="all">Todos os Ativos</option>
                         <option value="stocks">Ações</option>
                         <option value="etfs">ETFs</option>
+                        <option value="commodities">Commodities</option>
                     </select>
                 </div>
                 <div style="height: 400px; margin-top: 20px; position: relative;">
                     <canvas id="chartPort"></canvas>
                 </div>
-                <div id="portfolioListContainer" style="margin-top: 40px;"></div>
+                
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; padding: 0 10px; margin-top: 40px; color: var(--text-dim); font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">
+                    <span>Ativo</span>
+                    <span style="text-align: center;">Ticker</span>
+                    <span style="text-align: right;">Valor</span>
+                </div>
+                <div id="portfolioListContainer" style="margin-top: 10px;"></div>
             </div>
         </div>
     </div>
@@ -214,7 +220,7 @@
 <script>
     let chartDiv, chartPort;
     let dividendsData = { degiro: [], xtb: [] };
-    let currentPortfolioData = []; // Guardar dados para o filtro
+    let currentPortfolioData = [];
 
     Chart.defaults.color = '#94a3b8';
     Chart.defaults.borderColor = '#334155';
@@ -345,7 +351,7 @@
         `).join('');
     }
 
-    // Lógica do Portfólio com Filtro e Valor Central
+    // Lógica do Portfólio Atualizada
     function processPortfolio(data, save) {
         if(!data || data.length === 0) return;
         if(save) localStorage.setItem('port_data', JSON.stringify(data));
@@ -357,22 +363,31 @@
 
         data.forEach(r => {
             const nome = r['Produto'] || "";
+            const ticker = r['Ticker / ISIN'] || "---";
             const valor = parseLocaleNumber(r['Valor em EUR']);
 
             if(nome && valor > 0) {
-                // Cálculo para o card de valor total (sempre tudo)
                 totalGlobal += valor;
 
-                const isETF = nome.toLowerCase().includes("etf") || nome.toLowerCase().includes("ucits") || nome.toLowerCase().includes("ishares");
+                // Identificação de Commodities (Ouro e Prata)
+                const isCommodity = nome.toLowerCase().includes("gold") || 
+                                    nome.toLowerCase().includes("silver") || 
+                                    nome.toLowerCase().includes("phys") ||
+                                    ticker.includes("XAU") || 
+                                    ticker.includes("XAG");
+
+                const isETF = (nome.toLowerCase().includes("etf") || 
+                              nome.toLowerCase().includes("ucits") || 
+                              nome.toLowerCase().includes("ishares")) && !isCommodity;
                 
-                // Aplicar lógica do filtro
                 let matchFilter = false;
                 if(filterValue === 'all') matchFilter = true;
-                else if(filterValue === 'stocks' && !isETF && !nome.includes("CASH")) matchFilter = true;
+                else if(filterValue === 'stocks' && !isETF && !isCommodity && !nome.includes("CASH")) matchFilter = true;
                 else if(filterValue === 'etfs' && isETF) matchFilter = true;
+                else if(filterValue === 'commodities' && isCommodity) matchFilter = true;
 
                 if(matchFilter && !nome.includes("CASH")) {
-                    assets.push({ n: nome, v: valor });
+                    assets.push({ n: nome, t: ticker, v: valor });
                     filteredTotal += valor;
                 }
             }
@@ -381,7 +396,6 @@
         assets.sort((a, b) => b.v - a.v);
         document.getElementById('totalPortValue').innerText = totalGlobal.toLocaleString('pt-PT', {style:'currency', currency:'EUR'});
 
-        // Plugin para desenhar o texto no centro
         const centerTextPlugin = {
             id: 'centerText',
             afterDraw: (chart) => {
@@ -389,17 +403,14 @@
                 ctx.save();
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                
-                // Valor numérico
                 ctx.font = 'bold 1.5rem Inter';
                 ctx.fillStyle = '#f8fafc';
                 const displayText = filteredTotal.toLocaleString('pt-PT', { maximumFractionDigits: 0 }) + "€";
                 ctx.fillText(displayText, left + width / 2, top + height / 2 - 5);
-                
-                // Label "Total"
                 ctx.font = '600 0.7rem Inter';
                 ctx.fillStyle = '#94a3b8';
-                ctx.fillText(filterValue === 'all' ? 'TOTAL' : filterValue.toUpperCase(), left + width / 2, top + height / 2 + 25);
+                const label = filterValue === 'all' ? 'TOTAL' : (filterValue === 'stocks' ? 'AÇÕES' : filterValue.toUpperCase());
+                ctx.fillText(label, left + width / 2, top + height / 2 + 25);
                 ctx.restore();
             }
         };
@@ -412,17 +423,10 @@
                 datasets: [{
                     data: assets.map(a => a.v),
                     backgroundColor: ['#38bdf8','#818cf8','#fb7185','#34d399','#fbbf24','#a78bfa','#f472b6','#10b981','#6366f1','#ec4899'],
-                    borderWidth: 0,
-                    hoverOffset: 10
+                    borderWidth: 0
                 }]
             },
-            options: {
-                cutout: '75%',
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false } // Escondemos a legenda padrão para focar no gráfico e lista
-                }
-            },
+            options: { cutout: '75%', maintainAspectRatio: false, plugins: { legend: { display: false } } },
             plugins: [centerTextPlugin]
         });
 
@@ -430,11 +434,12 @@
             const pct = ((a.v / filteredTotal) * 100).toFixed(1);
             return `
                 <div style="margin-bottom:18px">
-                    <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:8px">
-                        <span>${a.n}</span>
-                        <span><strong>${a.v.toLocaleString('pt-PT', {minimumFractionDigits:2})}€</strong> <small style="color:var(--text-dim); margin-left:8px">${pct}%</small></span>
+                    <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; font-size:0.85rem; margin-bottom:8px; align-items:center;">
+                        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right:10px;">${a.n}</span>
+                        <span style="color:var(--text-dim); font-family:monospace; text-align:center; font-size:0.75rem;">${a.t}</span>
+                        <span style="text-align: right;"><strong>${a.v.toLocaleString('pt-PT', {minimumFractionDigits:2})}€</strong></span>
                     </div>
-                    <div style="background:var(--border); height:6px; border-radius:3px; overflow:hidden">
+                    <div style="background:var(--border); height:4px; border-radius:2px; overflow:hidden">
                         <div style="width:${pct}%; background:var(--primary); height:100%"></div>
                     </div>
                 </div>
