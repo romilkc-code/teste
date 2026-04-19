@@ -275,27 +275,51 @@
         monthly[ma] = (monthly[ma] || 0) + val;
     }
 
-    function processAllDividends() {
-        const monthly = {}, tickerSummary = {};
-        let totalGlobal = 0;
+function processAllDividends() {
+    const monthly = {}, tickerSummary = {};
+    let totalGlobal = 0;
 
-        // Processar DEGIRO
+    if (dividendsData.degiro && dividendsData.degiro.length > 0) {
         dividendsData.degiro.forEach(r => {
-            const desc = (r['Descrição'] || "").toLowerCase();
-            if(desc.includes("dividendo") && !desc.includes("imposto")) {
-                let val = 0;
-                // Procura o valor numa coluna numérica
-                const possibleKeys = ['Valor', 'Montante', 'EUR', 'Amount'];
-                for(let k of possibleKeys) { if(r[k]) { val = parseLocaleNumber(r[k]); if(val !== 0) break; } }
+            // Criamos um mapa de chaves limpas para facilitar a busca
+            const keys = Object.keys(r);
+            const row = r;
+
+            const desc = (row['Descrição'] || row['Description'] || "").toLowerCase();
+            
+            // Filtro: Apenas linhas de "Dividendo" (excluímos impostos/retentions)
+            if(desc.includes("dividendo") && !desc.includes("imposto") && !desc.includes("withholding")) {
                 
+                let val = 0;
+
+                // ESTRATÉGIA PARA DEGIRO (Colunas sem nome):
+                // 1. Procuramos o índice da coluna "Mudança"
+                const mudancaIdx = keys.findIndex(k => k.toLowerCase().includes('mudança') || k.toLowerCase().includes('variation'));
+                
+                // 2. O valor numérico na DEGIRO está normalmente na coluna IMEDIATAMENTE a seguir à "Mudança"
+                if (mudancaIdx !== -1 && keys[mudancaIdx + 1]) {
+                    val = parseLocaleNumber(row[keys[mudancaIdx + 1]]);
+                }
+
+                // Backup: Se não funcionou, tenta as colunas nomeadas padrão
+                if (val === 0) {
+                    val = parseLocaleNumber(row['Variação']) || parseLocaleNumber(row['Valor']) || parseLocaleNumber(row['Montante']);
+                }
+                
+                // Apenas somamos valores positivos (créditos de dividendos)
                 if(val > 0) {
-                    updateStats(r['Produto'] || "Outros", val, r['Data'] || "", 'DEGIRO', tickerSummary, monthly);
+                    const dataOp = row['Data'] || row['Data de execução'] || "";
+                    const produto = row['Produto'] || row['Product'] || "Outros";
+                    
+                    updateStats(produto, val, dataOp, 'DEGIRO', tickerSummary, monthly);
                     totalGlobal += val;
                 }
             }
         });
+    }
 
-        // Processar XTB
+    // Processar XTB (Mantém-se igual, pois a XTB tem nomes de colunas fixos)
+    if (dividendsData.xtb && dividendsData.xtb.length > 0) {
         dividendsData.xtb.forEach(r => {
             if((r['Type'] || "").trim() === "Dividend") {
                 const val = parseLocaleNumber(r['Amount']);
@@ -306,9 +330,10 @@
                 }
             }
         });
-
-        renderDividendUI(totalGlobal, monthly, tickerSummary);
     }
+
+    renderDividendUI(totalGlobal, monthly, tickerSummary);
+}
 
     function renderDividendUI(total, monthly, summary) {
         document.getElementById('totalDivValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
