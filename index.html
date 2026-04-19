@@ -125,6 +125,17 @@
             cursor: pointer;
         }
 
+        .ticker-group { background: #1e293b; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; cursor: pointer; }
+        .ticker-header { display: flex; justify-content: space-between; padding: 16px 20px; align-items: center; }
+        .ticker-name { font-weight: 600; font-size: 1rem; }
+        .ticker-total { color: var(--primary); font-weight: 700; }
+        .broker-tag { font-size: 0.6rem; padding: 3px 8px; border-radius: 4px; margin-left: 10px; font-weight: 800; }
+        .tag-degiro { background: #334155; color: #cbd5e1; }
+        .tag-xtb { background: #0ea5e9; color: #000; }
+        .ticker-details { display: none; padding: 0 20px 16px; border-top: 1px solid var(--border); }
+        .ticker-group.open .ticker-details { display: block; }
+        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.85rem; color: var(--text-dim); border-bottom: 1px solid #334155; }
+
         .chart-container { height: 300px; width: 100%; margin-top: 20px; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -196,20 +207,21 @@
     let dividendsData = { degiro: [], xtb: [] };
     let currentPortfolioData = [];
 
-    Chart.defaults.color = '#94a3b8';
-    Chart.defaults.borderColor = '#334155';
+    function parseLocaleNumber(val) {
+        if (!val) return 0;
+        let s = val.toString().trim().replace('€', '').replace('$', '').trim();
+        // Se tiver vírgula, é formato europeu (ex: 1.234,56 ou 1234,56)
+        if (s.includes(',')) {
+            s = s.replace(/\./g, '').replace(',', '.');
+        }
+        return parseFloat(s) || 0;
+    }
 
     function switchTab(tabId, btn) {
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(tabId).classList.add('active');
         btn.classList.add('active');
-    }
-
-    function parseLocaleNumber(stringNumber) {
-        if(!stringNumber) return 0;
-        let res = stringNumber.toString().replace(/\./g, '').replace(',', '.');
-        return parseFloat(res) || 0;
     }
 
     window.onload = () => {
@@ -222,12 +234,105 @@
 
     function clearData() { if(confirm("Apagar todos os dados?")) { localStorage.clear(); location.reload(); } }
 
+    document.getElementById('fileDegiro').onchange = (e) => {
+        Papa.parse(e.target.files[0], { header: true, complete: (res) => { 
+            dividendsData.degiro = res.data;
+            localStorage.setItem('divs_degiro', JSON.stringify(res.data));
+            processAllDividends();
+        }});
+    };
+
+    document.getElementById('fileXtb').onchange = (e) => {
+        Papa.parse(e.target.files[0], { 
+            header: true, skipEmptyLines: true,
+            beforeFirstChunk: (chunk) => {
+                const lines = chunk.split(/\r\n|\r|\n/);
+                const idx = lines.findIndex(l => l.toLowerCase().includes("type") && l.toLowerCase().includes("amount"));
+                return idx !== -1 ? lines.slice(idx).join("\n") : chunk;
+            },
+            complete: (res) => {
+                dividendsData.xtb = res.data.filter(r => r.Type && r.Amount);
+                localStorage.setItem('divs_xtb', JSON.stringify(dividendsData.xtb));
+                processAllDividends();
+            }
+        });
+    };
+
     document.getElementById('filePortfolio').onchange = (e) => {
         Papa.parse(e.target.files[0], { header: true, skipEmptyLines: true, complete: (res) => {
             currentPortfolioData = res.data;
             processPortfolio(res.data, true);
         }});
     };
+
+    function updateStats(ticker, val, date, broker, summary, monthly) {
+        if(!summary[ticker]) summary[ticker] = { total: 0, broker, dates: [] };
+        summary[ticker].total += val;
+        summary[ticker].dates.push({ date, val });
+        const parts = date.split(/[-/.]/);
+        // Tenta extrair MM/AAAA
+        const ma = (parts.length >= 2) ? `${parts[1]}/${parts[0].length === 4 ? parts[0] : parts[2]}` : "Outros";
+        monthly[ma] = (monthly[ma] || 0) + val;
+    }
+
+    function processAllDividends() {
+        const monthly = {}, tickerSummary = {};
+        let totalGlobal = 0;
+
+        // Processar DEGIRO
+        dividendsData.degiro.forEach(r => {
+            const desc = (r['Descrição'] || "").toLowerCase();
+            if(desc.includes("dividendo") && !desc.includes("imposto")) {
+                let val = 0;
+                // Procura o valor numa coluna numérica
+                const possibleKeys = ['Valor', 'Montante', 'EUR', 'Amount'];
+                for(let k of possibleKeys) { if(r[k]) { val = parseLocaleNumber(r[k]); if(val !== 0) break; } }
+                
+                if(val > 0) {
+                    updateStats(r['Produto'] || "Outros", val, r['Data'] || "", 'DEGIRO', tickerSummary, monthly);
+                    totalGlobal += val;
+                }
+            }
+        });
+
+        // Processar XTB
+        dividendsData.xtb.forEach(r => {
+            if((r['Type'] || "").trim() === "Dividend") {
+                const val = parseLocaleNumber(r['Amount']);
+                if(val > 0) {
+                    const rawDate = (r['Time'] || "").split(' ')[0];
+                    updateStats((r['Instrument'] || "Outros").trim(), val, rawDate, 'XTB', tickerSummary, monthly);
+                    totalGlobal += val;
+                }
+            }
+        });
+
+        renderDividendUI(totalGlobal, monthly, tickerSummary);
+    }
+
+    function renderDividendUI(total, monthly, summary) {
+        document.getElementById('totalDivValue').innerText = total.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+        const sortedMonths = Object.keys(monthly).sort();
+        
+        if(chartDiv) chartDiv.destroy();
+        chartDiv = new Chart(document.getElementById('chartDiv'), {
+            type:'bar',
+            data: { labels: sortedMonths, datasets:[{ label:'Euros', data: sortedMonths.map(m=>monthly[m].toFixed(2)), backgroundColor:'#38bdf8', borderRadius:5 }] },
+            options: { maintainAspectRatio:false, plugins:{legend:{display:false}} }
+        });
+
+        document.getElementById('dividendTickerContainer').innerHTML = Object.entries(summary).sort((a,b)=>b[1].total-a[1].total).map(([name, info]) => `
+            <div class="ticker-group" onclick="this.classList.toggle('open')">
+                <div class="ticker-header">
+                    <span class="ticker-name">${name} <span class="broker-tag ${info.broker==='XTB'?'tag-xtb':'tag-degiro'}">${info.broker}</span></span>
+                    <span class="ticker-total">${info.total.toLocaleString('pt-PT', {minimumFractionDigits:2})}€</span>
+                </div>
+                <div class="ticker-details">
+                    ${info.dates.map(d=>`<div class="detail-row"><span>${d.date}</span><strong>+${d.val.toFixed(2)}€</strong></div>`).join('')}
+                </div>
+            </div>
+        `).join('');
+    }
 
     function applyPortfolioFilter() { processPortfolio(currentPortfolioData, false); }
 
@@ -239,12 +344,7 @@
         let totalGlobal = 0, filteredTotal = 0;
         const assets = [];
 
-        // Lista de tickers, ISINs e fragmentos de nome para identificação precisa
-        const specificETFTickers = [
-            'EQQB', 'QDVE', 'SXR8', 'VGWD', 'VUSA', 'VWCE', 
-            'IE00B8GKDB10', 'IE00B3WJKG14', // ISINs adicionados
-            'VNGRD FTSE ALL-WLD', 'ISHARES S&P 500 INFO' // Fragmentos de nome adicionados
-        ];
+        const specificETFTickers = ['EQQB', 'QDVE', 'SXR8', 'VGWD', 'VUSA', 'VWCE', 'IE00B8GKDB10', 'IE00B3WJKG14', 'VNGRD FTSE ALL-WLD', 'ISHARES S&P 500 INFO'];
 
         data.forEach(r => {
             const nome = r['Produto'] || "";
@@ -253,14 +353,8 @@
 
             if(nome && valor > 0) {
                 totalGlobal += valor;
-
                 const isCommodity = nome.toLowerCase().includes("gold") || nome.toLowerCase().includes("silver") || ticker.includes("XAU") || ticker.includes("XAG");
-                
-                // Lógica de ETF reforçada com ISINs e nomes específicos
-                const isETF = nome.toLowerCase().includes("etf") || 
-                              nome.toLowerCase().includes("ucits") || 
-                              specificETFTickers.some(t => ticker.includes(t)) ||
-                              specificETFTickers.some(t => nome.toUpperCase().includes(t.toUpperCase()));
+                const isETF = nome.toLowerCase().includes("etf") || nome.toLowerCase().includes("ucits") || specificETFTickers.some(t => ticker.includes(t)) || specificETFTickers.some(t => nome.toUpperCase().includes(t.toUpperCase()));
                 
                 let match = false;
                 if(filterValue === 'all') match = true;
@@ -278,21 +372,6 @@
         assets.sort((a, b) => b.v - a.v);
         document.getElementById('totalPortValue').innerText = totalGlobal.toLocaleString('pt-PT', {style:'currency', currency:'EUR'});
 
-        const centerTextPlugin = {
-            id: 'centerText',
-            afterDraw: (chart) => {
-                const { ctx, chartArea: { left, top, width, height } } = chart;
-                ctx.save();
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.font = 'bold 1.5rem Inter'; ctx.fillStyle = '#f8fafc';
-                ctx.fillText(filteredTotal.toLocaleString('pt-PT', { maximumFractionDigits: 0 }) + "€", left + width / 2, top + height / 2 - 5);
-                ctx.font = '600 0.7rem Inter'; ctx.fillStyle = '#94a3b8';
-                const label = filterValue === 'all' ? 'TOTAL' : filterValue.toUpperCase();
-                ctx.fillText(label, left + width / 2, top + height / 2 + 25);
-                ctx.restore();
-            }
-        };
-
         if(chartPort) chartPort.destroy();
         chartPort = new Chart(document.getElementById('chartPort'), {
             type: 'doughnut',
@@ -304,12 +383,11 @@
                     borderWidth: 0
                 }]
             },
-            options: { cutout: '75%', maintainAspectRatio: false, plugins: { legend: { display: false } } },
-            plugins: [centerTextPlugin]
+            options: { cutout: '75%', maintainAspectRatio: false, plugins: { legend: { display: false } } }
         });
 
         document.getElementById('portfolioListContainer').innerHTML = assets.map(a => {
-            const pct = ((a.v / filteredTotal) * 100).toFixed(1);
+            const pct = ((a.v / (filteredTotal || 1)) * 100).toFixed(1);
             return `
                 <div style="margin-bottom:18px">
                     <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; font-size:0.85rem; margin-bottom:8px; align-items:center;">
@@ -323,9 +401,6 @@
                 </div>`;
         }).join('');
     }
-
-    // Funções de dividendos mantidas para integridade
-    function processAllDividends() { /* ... */ }
 </script>
 </body>
 </html>
